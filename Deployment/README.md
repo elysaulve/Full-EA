@@ -4,9 +4,9 @@ A full enterprise architecture, enabling developers, data engineers, and, data s
 # Getting Started
 1.	Installation:
     
-    Configure simple parameters to have your full enterprise architecture up and running:
+    Just set the parameters to have your full enterprise architecture up and running:
      
-    ![Deploy to Azure](https://aka.ms/deploytoazurebutton)
+    [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Felysaulve%2FFull-EA%2Frefs%2Fheads%2Fmain%2FDeployment%2FTemplates%2FBicep%2Fmain.json)
 
 2.	Software dependencies
 3.	Latest releases
