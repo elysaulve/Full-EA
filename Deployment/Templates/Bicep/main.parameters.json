@@ -6,13 +6,10 @@
       "value": "66c0cf99-efaa-4c9f-b286-722591d3d80b"
     },
     "solutionName": {
-      "value": "mytest30"
+      "value": "mytest31"
     },
-    "solutionLocation": {
-      "value": "southcentralus"
-    },
-    "dnsZonesName": {
-      "value": "mytest30.com"
+    "domain": {
+      "value": "mytest31.com"
     },
     "linuxAdminUserName": {
       "value": "Elsavies"

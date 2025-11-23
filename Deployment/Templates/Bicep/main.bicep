@@ -9,17 +9,14 @@ param tenantId string = subscription().tenantId
 @minLength(36)
 @maxLength(36)
 @description('Azure Subscription Id')
-param subscriptionId string
+param subscriptionId string = subscription().subscriptionId
 
 @minLength(3)
 @maxLength(15)
 @description('Solution Name')
 param solutionName string
 
-@minLength(3)
-@maxLength(15)
-@description('Solution Location')
-param solutionLocation string
+var solutionLocation string = toLower(deployment().location)
 
 module resourceGroupsModule './resource-group.bicep' = {
   name: '${solutionName}-resourceGroupsDeployment'
@@ -52,7 +49,7 @@ module managedIdentityModule 'managed-identity.bicep' = {
 }
 
 @description('DNS Zone Name.')
-param dnsZonesName string
+param domain string
 
 // ========== DNS Zones Module ========== //
 module dnsZonesModule 'dns-zones.bicep' = {
@@ -60,7 +57,7 @@ module dnsZonesModule 'dns-zones.bicep' = {
   params: {
     solutionName: solutionName
     solutionLocation: solutionLocation
-    dnsZonesName: dnsZonesName
+    dnsZonesName: domain
   }
   scope: resourceGroup(rgNetworkName)
   dependsOn: [
@@ -135,7 +132,6 @@ module natGatewayModule 'nat-gateway.bicep' = {
     solutionName: solutionName
     solutionLocation: solutionLocation
     publicIpAddressId: publicIpAddressNatGatewayModule.outputs.publicIpAddressOutput.id
-    //publicIpPrefixId: publicIpPrefixNatGatewayModule.outputs.publicIpPrefixOutput.id
   }
   scope: resourceGroup(rgNetworkName)
   dependsOn: [

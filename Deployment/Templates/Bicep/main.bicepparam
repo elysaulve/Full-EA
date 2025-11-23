@@ -5,7 +5,7 @@ param solutionName = 'mytest30'
 param solutionLocation = 'southcentralus'
 
 //DNS Zone
-param dnsZonesName = 'mytest30.com'
+param domain = 'mytest30.com'
 
 //Kubernetes Services
 param linuxAdminUserName = 'Elsavies'
