@@ -1,6 +1,6 @@
 // ========== Synapse Analytics Workspace ========== //
 @description('Solution Name')
-param solutionName string
+param solutionName string = substring(guid(subscription().id, tenant().tenantId), 0, 15)
 
 @description('Solution Location')
 param solutionLocation string = resourceGroup().location
@@ -9,7 +9,7 @@ param solutionLocation string = resourceGroup().location
 var sawsName = '${ solutionName }-saws'
 
 @description('Data Lake Storage Account URL.')
-param dlsAccountUrl string = ''
+param dlsAccountRef string = ''
 
 @description('Data Lake Storage File System.')
 param dlsFileSystem string = ''
@@ -20,7 +20,7 @@ param dlsResourceId string
 @description('Managed Identity ID. The Azure resource Id of the managed identity used for the deployment.')
 param managedIdentityId string
 
-resource synapseAnalyticsWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
+resource synapseAnalyticsWorkspace 'Microsoft.Synapse/workspaces@2023-05-01' = {
   name: sawsName
   location: solutionLocation
   identity: {
@@ -33,21 +33,17 @@ resource synapseAnalyticsWorkspace 'Microsoft.Synapse/workspaces@2021-06-01' = {
     defaultDataLakeStorage: {
       resourceId: dlsResourceId
       createManagedPrivateEndpoint: false
-      accountUrl: dlsAccountUrl
+      accountUrl: dlsAccountRef
       filesystem: dlsFileSystem
     }
-    encryption: {
-    }
     sqlAdministratorLogin: 'sqladminuser'
-    privateEndpointConnections: []
     publicNetworkAccess: 'Enabled'
     azureADOnlyAuthentication: false
     trustedServiceBypassEnabled: true
-
   }
 }
 
-resource Microsoft_Synapse_workspaces_azureADOnlyAuthentications_workspaces_default 'Microsoft.Synapse/workspaces/azureADOnlyAuthentications@2021-06-01' = {
+resource Microsoft_Synapse_workspaces_azureADOnlyAuthentications_workspaces_default 'Microsoft.Synapse/workspaces/azureADOnlyAuthentications@2023-05-01' = {
   parent: synapseAnalyticsWorkspace
   name: 'default'
   properties: {
@@ -83,7 +79,7 @@ resource workspaces_sparkpoolforml 'Microsoft.Synapse/workspaces/bigDataPools@20
   }
 }
 
-resource Microsoft_Synapse_workspaces_dedicatedSQLminimalTlsSettings_workspaces_default 'Microsoft.Synapse/workspaces/dedicatedSQLminimalTlsSettings@2021-06-01' = {
+resource Microsoft_Synapse_workspaces_dedicatedSQLminimalTlsSettings_workspaces_default 'Microsoft.Synapse/workspaces/dedicatedSQLminimalTlsSettings@2023-05-01' = {
   parent: synapseAnalyticsWorkspace
   name: 'default'
   properties: {
@@ -109,7 +105,7 @@ resource workspaces_allowAllAzure 'Microsoft.Synapse/workspaces/firewallRules@20
   }
 }
 
-resource workspaces_AutoResolveIntegrationRuntime 'Microsoft.Synapse/workspaces/integrationruntimes@2021-06-01' = {
+resource workspaces_AutoResolveIntegrationRuntime 'Microsoft.Synapse/workspaces/integrationruntimes@2023-05-01' = {
   parent: synapseAnalyticsWorkspace
   name: 'AutoResolveIntegrationRuntime'
   properties: {

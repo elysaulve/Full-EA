@@ -1,12 +1,11 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
-  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
       "version": "0.39.26.7824",
-      "templateHash": "10582243185331293549"
+      "templateHash": "16799743276874193460"
     }
   },
   "parameters": {
@@ -30,17 +29,42 @@
     },
     "solutionName": {
       "type": "string",
+      "defaultValue": "[substring(guid(parameters('subscriptionId'), parameters('tenantId')), 0, 15)]",
       "minLength": 3,
       "maxLength": 15,
       "metadata": {
         "description": "Solution Name"
       }
     },
+    "managedResourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Managed App expected managed resource group name (must match the application definition logic)"
+      }
+    },
+    "Location": {
+      "type": "string",
+      "defaultValue": "[deployment().location]"
+    },
     "domain": {
       "type": "string",
       "metadata": {
         "description": "DNS Zone Name."
       }
+    },
+    "storageSKU": {
+      "type": "string",
+      "defaultValue": "Standard_LRS",
+      "allowedValues": [
+        "Premium_LRS",
+        "Premium_ZRS",
+        "Standard_GRS",
+        "Standard_GZRS",
+        "Standard_LRS",
+        "Standard_RAGRS",
+        "Standard_RAGZRS",
+        "Standard_ZRS"
+      ]
     },
     "linuxAdminUserName": {
       "type": "string",
@@ -56,7 +80,21 @@
         "description": "SSH RSA Publick Key"
       }
     },
-    "sqlAdminLogin": {
+    "aksVMSize": {
+      "type": "string",
+      "defaultValue": "Standard_B2S",
+      "metadata": {
+        "description": "AKS VM Size. Size of the Virtual Machines to be used as nodes in the Kubernetes cluster."
+      }
+    },
+    "aksVMCount": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "AKS VM Count. Count of the Virtual Machines to be used as nodes in the Kubernetes cluster."
+      }
+    },
+    "sqlAdminUsername": {
       "type": "string",
       "metadata": {
         "description": "SQL Administrator Login."
@@ -70,184 +108,14 @@
     }
   },
   "variables": {
-    "solutionLocation": "[toLower(deployment().location)]",
-    "rgNetworkName": "[format('{0}_{1}_network', parameters('solutionName'), variables('solutionLocation'))]",
-    "rgServicesName": "[format('{0}_{1}_services', parameters('solutionName'), variables('solutionLocation'))]",
-    "rgStorageName": "[format('{0}_{1}_storage', parameters('solutionName'), variables('solutionLocation'))]",
-    "rgDataName": "[format('{0}_{1}_data', parameters('solutionName'), variables('solutionLocation'))]",
-    "rgAnalyticsName": "[format('{0}_{1}_analytics', parameters('solutionName'), variables('solutionLocation'))]",
-    "rgAIName": "[format('{0}_{1}_ai', parameters('solutionName'), variables('solutionLocation'))]",
     "azureDatabricksEnterpriseApplicationObjectId": "4e0ed970-b4e4-4fac-be7b-c73ff733bf7c"
   },
-  "resources": {
-    "resourceGroupsModule": {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "[format('{0}-resourceGroupsDeployment', parameters('solutionName'))]",
-      "subscriptionId": "[parameters('subscriptionId')]",
-      "location": "[deployment().location]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "solutionName": {
-            "value": "[parameters('solutionName')]"
-          },
-          "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "9001771368750902366"
-            }
-          },
-          "parameters": {
-            "solutionName": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 15,
-              "metadata": {
-                "description": "Project Name:"
-              }
-            },
-            "solutionLocation": {
-              "type": "string",
-              "metadata": {
-                "description": "Project Location:"
-              }
-            }
-          },
-          "variables": {
-            "rgNames": [
-              "[format('{0}_{1}_network', parameters('solutionName'), parameters('solutionLocation'))]",
-              "[format('{0}_{1}_services', parameters('solutionName'), parameters('solutionLocation'))]",
-              "[format('{0}_{1}_data', parameters('solutionName'), parameters('solutionLocation'))]",
-              "[format('{0}_{1}_storage', parameters('solutionName'), parameters('solutionLocation'))]",
-              "[format('{0}_{1}_ai', parameters('solutionName'), parameters('solutionLocation'))]",
-              "[format('{0}_{1}_analytics', parameters('solutionName'), parameters('solutionLocation'))]"
-            ]
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[0]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[1]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[2]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[3]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[4]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Resources/resourceGroups",
-              "apiVersion": "2021-04-01",
-              "name": "[variables('rgNames')[5]]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              }
-            }
-          ],
-          "outputs": {
-            "resourceGroupsOutput": {
-              "type": "object",
-              "value": {
-                "network": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[0])]",
-                  "name": "[variables('rgNames')[0]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[0]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[0]), '2021-04-01')]"
-                },
-                "services": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[1])]",
-                  "name": "[variables('rgNames')[1]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[1]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[1]), '2021-04-01')]"
-                },
-                "data": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[2])]",
-                  "name": "[variables('rgNames')[2]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[2]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[2]), '2021-04-01')]"
-                },
-                "storage": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[3])]",
-                  "name": "[variables('rgNames')[3]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[3]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[3]), '2021-04-01')]"
-                },
-                "ai": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[4])]",
-                  "name": "[variables('rgNames')[4]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[4]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[4]), '2021-04-01')]"
-                },
-                "analytics": {
-                  "id": "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[5])]",
-                  "name": "[variables('rgNames')[5]]",
-                  "location": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[5]), '2021-04-01', 'full').location]",
-                  "properties": "[reference(subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('rgNames')[5]), '2021-04-01')]"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "managedIdentityModule": {
+  "resources": [
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-managedIdentityDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgServicesName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -258,7 +126,7 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           }
         },
         "template": {
@@ -268,7 +136,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "6620840401399054840"
+              "templateHash": "8401992099077279414"
             }
           },
           "parameters": {
@@ -332,6 +200,7 @@
                       "Microsoft.ContainerInstance/containerGroups/*",
                       "Microsoft.Resources/deployments/*",
                       "Microsoft.Resources/deploymentScripts/*",
+                      "Microsoft.Authorization/roleAssignments/*",
                       "Microsoft.Storage/register/action",
                       "Microsoft.ContainerInstance/register/action"
                     ]
@@ -369,16 +238,13 @@
             }
           }
         }
-      },
-      "dependsOn": [
-        "resourceGroupsModule"
-      ]
+      }
     },
-    "dnsZonesModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-dnsZonesDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -387,9 +253,6 @@
         "parameters": {
           "solutionName": {
             "value": "[parameters('solutionName')]"
-          },
-          "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
           },
           "dnsZonesName": {
             "value": "[parameters('domain')]"
@@ -402,7 +265,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "9974042271494537960"
+              "templateHash": "9851630524498825210"
             }
           },
           "parameters": {
@@ -412,13 +275,6 @@
               "maxLength": 15,
               "metadata": {
                 "description": "Solution Name"
-              }
-            },
-            "solutionLocation": {
-              "type": "string",
-              "defaultValue": "[resourceGroup().location]",
-              "metadata": {
-                "description": "Solution Location"
               }
             },
             "dnsZonesName": {
@@ -465,16 +321,13 @@
             }
           }
         }
-      },
-      "dependsOn": [
-        "resourceGroupsModule"
-      ]
+      }
     },
-    "publicIpAddressAppGatewayModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-publicIpAddressAppGatewayDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -485,10 +338,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "domainNameLabel": {
-            "value": "[reference('dnsZonesModule').outputs.dnsZonesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName'))), '2025-04-01').outputs.dnsZonesOutput.value.name]"
           },
           "pipName": {
             "value": "[format('{0}-pip-ag', parameters('solutionName'))]"
@@ -501,7 +354,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12379273977177398079"
+              "templateHash": "9885416304131182469"
             }
           },
           "parameters": {
@@ -629,7 +482,7 @@
           "resources": [
             {
               "type": "Microsoft.Network/publicIPAddresses",
-              "apiVersion": "2024-05-01",
+              "apiVersion": "2025-01-01",
               "name": "[parameters('pipName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
@@ -674,15 +527,14 @@
         }
       },
       "dependsOn": [
-        "dnsZonesModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName')))]"
       ]
     },
-    "publicIpAddressNatGatewayModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-publicIpAddressNatGatewayDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -693,10 +545,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "domainNameLabel": {
-            "value": "[reference('dnsZonesModule').outputs.dnsZonesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName'))), '2025-04-01').outputs.dnsZonesOutput.value.name]"
           },
           "pipName": {
             "value": "[format('{0}-pip-ng', parameters('solutionName'))]"
@@ -709,7 +561,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12379273977177398079"
+              "templateHash": "9885416304131182469"
             }
           },
           "parameters": {
@@ -837,7 +689,7 @@
           "resources": [
             {
               "type": "Microsoft.Network/publicIPAddresses",
-              "apiVersion": "2024-05-01",
+              "apiVersion": "2025-01-01",
               "name": "[parameters('pipName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
@@ -882,15 +734,14 @@
         }
       },
       "dependsOn": [
-        "dnsZonesModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName')))]"
       ]
     },
-    "publicIpAddressVirtualNetworkGatewayDefaultModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-publicIpAddressVirtualNetworkGatewayDeployment1', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -901,10 +752,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "domainNameLabel": {
-            "value": "[reference('dnsZonesModule').outputs.dnsZonesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName'))), '2025-04-01').outputs.dnsZonesOutput.value.name]"
           },
           "pipName": {
             "value": "[format('{0}-pip-vng-default', parameters('solutionName'))]"
@@ -917,7 +768,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12379273977177398079"
+              "templateHash": "9885416304131182469"
             }
           },
           "parameters": {
@@ -1045,7 +896,7 @@
           "resources": [
             {
               "type": "Microsoft.Network/publicIPAddresses",
-              "apiVersion": "2024-05-01",
+              "apiVersion": "2025-01-01",
               "name": "[parameters('pipName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
@@ -1090,15 +941,14 @@
         }
       },
       "dependsOn": [
-        "dnsZonesModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName')))]"
       ]
     },
-    "publicIpAddressVirtualNetworkGatewayActiveActiveModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-publicIpAddressVirtualNetworkGatewayDeployment2', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1109,10 +959,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "domainNameLabel": {
-            "value": "[reference('dnsZonesModule').outputs.dnsZonesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName'))), '2025-04-01').outputs.dnsZonesOutput.value.name]"
           },
           "pipName": {
             "value": "[format('{0}-pip-vng-activeactive', parameters('solutionName'))]"
@@ -1125,7 +975,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "12379273977177398079"
+              "templateHash": "9885416304131182469"
             }
           },
           "parameters": {
@@ -1253,7 +1103,7 @@
           "resources": [
             {
               "type": "Microsoft.Network/publicIPAddresses",
-              "apiVersion": "2024-05-01",
+              "apiVersion": "2025-01-01",
               "name": "[parameters('pipName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
@@ -1298,15 +1148,14 @@
         }
       },
       "dependsOn": [
-        "dnsZonesModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName')))]"
       ]
     },
-    "natGatewayModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-natGatewayDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1317,10 +1166,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "publicIpAddressId": {
-            "value": "[reference('publicIpAddressNatGatewayModule').outputs.publicIpAddressOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressNatGatewayDeployment', parameters('solutionName'))), '2025-04-01').outputs.publicIpAddressOutput.value.id]"
           }
         },
         "template": {
@@ -1409,15 +1258,14 @@
         }
       },
       "dependsOn": [
-        "publicIpAddressNatGatewayModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressNatGatewayDeployment', parameters('solutionName')))]"
       ]
     },
-    "virtualNetworkModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-virtualNetworkDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1428,10 +1276,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "natGatewayId": {
-            "value": "[reference('natGatewayModule').outputs.natGatewayOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-natGatewayDeployment', parameters('solutionName'))), '2025-04-01').outputs.natGatewayOutput.value.id]"
           }
         },
         "template": {
@@ -1441,12 +1289,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "13310361090216683813"
+              "templateHash": "12551544488618880072"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "minLength": 3,
               "maxLength": 15,
               "metadata": {
@@ -1499,7 +1348,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1513,7 +1361,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1527,7 +1374,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1541,7 +1387,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1555,7 +1400,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1569,7 +1413,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1583,7 +1426,6 @@
                 "location": "[parameters('solutionLocation')]"
               },
               "properties": {
-                "securityRules": [],
                 "flushConnection": "[parameters('nsgFlushConnection')]"
               }
             },
@@ -1734,15 +1576,14 @@
         }
       },
       "dependsOn": [
-        "natGatewayModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-natGatewayDeployment', parameters('solutionName')))]"
       ]
     },
-    "appGatewayModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-appGatewayDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1753,19 +1594,16 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
-          },
-          "managedIdentityPrincipalId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.objectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "publicIpAddress": {
-            "value": "[reference('publicIpAddressAppGatewayModule').outputs.publicIpAddressOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressAppGatewayDeployment', parameters('solutionName'))), '2025-04-01').outputs.publicIpAddressOutput.value.id]"
           },
           "appGatewaySubnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.appGatewaySubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.appGatewaySubnet.id]"
           }
         },
         "template": {
@@ -1775,13 +1613,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "6332857153165959443"
+              "templateHash": "2216093029089993321"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
-              "defaultValue": "",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "metadata": {
                 "description": "The name of the Managed Cluster resource."
               }
@@ -1804,12 +1642,6 @@
               "type": "string",
               "metadata": {
                 "description": "Managed Identity ID. The resource ID of the user assigned identity to be used for the application gateway deployment."
-              }
-            },
-            "managedIdentityPrincipalId": {
-              "type": "string",
-              "metadata": {
-                "description": "Managed Identity Principal Id. The principal ID of the user assigned identity to be used for the application gateway deployment."
               }
             },
             "skuFamily": {
@@ -2052,9 +1884,7 @@
                 "backendAddressPools": [
                   {
                     "name": "appGatewayBackendAddressPools",
-                    "properties": {
-                      "backendAddresses": []
-                    }
+                    "properties": {}
                   }
                 ],
                 "backendHttpSettingsCollection": [
@@ -2159,10 +1989,7 @@
                 ],
                 "firewallPolicy": {
                   "id": "[resourceId('Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies', 'appGatewayWafPolicy')]"
-                },
-                "rewriteRuleSets": [],
-                "redirectConfigurations": [],
-                "privateLinkConfigurations": []
+                }
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies', 'appGatewayWafPolicy')]"
@@ -2181,17 +2008,16 @@
         }
       },
       "dependsOn": [
-        "managedIdentityModule",
-        "publicIpAddressAppGatewayModule",
-        "resourceGroupsModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressAppGatewayDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "virtualNetworkGatewayModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-virtualNetworkGatewayDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -2202,10 +2028,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "enableBgp": {
             "value": true
@@ -2214,13 +2040,13 @@
             "value": true
           },
           "virtualNetworkGatewayDefaultPublicIpId": {
-            "value": "[reference('publicIpAddressVirtualNetworkGatewayDefaultModule').outputs.publicIpAddressOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressVirtualNetworkGatewayDeployment1', parameters('solutionName'))), '2025-04-01').outputs.publicIpAddressOutput.value.id]"
           },
           "virtualNetworkGatewayActiveActivePublicIpId": {
-            "value": "[reference('publicIpAddressVirtualNetworkGatewayActiveActiveModule').outputs.publicIpAddressOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressVirtualNetworkGatewayDeployment2', parameters('solutionName'))), '2025-04-01').outputs.publicIpAddressOutput.value.id]"
           },
           "virtualNetworkGatewaySubnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.virtualNetworkGatewaySubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.virtualNetworkGatewaySubnet.id]"
           }
         },
         "template": {
@@ -2524,18 +2350,17 @@
         }
       },
       "dependsOn": [
-        "managedIdentityModule",
-        "publicIpAddressVirtualNetworkGatewayActiveActiveModule",
-        "publicIpAddressVirtualNetworkGatewayDefaultModule",
-        "resourceGroupsModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressVirtualNetworkGatewayDeployment2', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-publicIpAddressVirtualNetworkGatewayDeployment1', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "keyvaultModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-keyvaultDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgStorageName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -2546,13 +2371,13 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "tenantId": {
             "value": "[subscription().tenantId]"
           },
           "managedIdentityPrincipalId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.objectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.objectId]"
           },
           "enablePurgeProtection": {
             "value": true
@@ -2568,7 +2393,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "16333796662115732109"
+              "templateHash": "2031870578089559229"
             }
           },
           "parameters": {
@@ -2696,7 +2521,7 @@
             }
           },
           "variables": {
-            "vaultUri": "[format('https://{0}.vault.azure.net/', parameters('kvName'))]"
+            "vaultRef": "[uri(format('https://{0}{1}', parameters('kvName'), environment().suffixes.keyvaultDns), '/')]"
           },
           "resources": [
             {
@@ -2744,7 +2569,7 @@
                   "name": "[parameters('sku')]"
                 },
                 "tenantId": "[parameters('tenantId')]",
-                "vaultUri": "[variables('vaultUri')]"
+                "vaultUri": "[variables('vaultRef')]"
               }
             },
             {
@@ -2759,7 +2584,7 @@
             },
             {
               "type": "Microsoft.KeyVault/vaults/keys",
-              "apiVersion": "2022-07-01",
+              "apiVersion": "2025-05-01",
               "name": "[format('{0}/{1}', parameters('kvName'), parameters('encryptionKeyName'))]",
               "tags": {
                 "app": "[parameters('solutionName')]",
@@ -2822,12 +2647,12 @@
               "value": {
                 "id": "[resourceId('Microsoft.KeyVault/vaults', parameters('kvName'))]",
                 "name": "[parameters('kvName')]",
-                "uri": "[variables('vaultUri')]",
+                "uri": "[variables('vaultRef')]",
                 "keys": [
                   {
                     "name": "[parameters('encryptionKeyName')]",
-                    "uri": "[string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2022-07-01').keyUriWithVersion)]",
-                    "version": "[substring(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2022-07-01').keyUriWithVersion), add(lastIndexOf(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2022-07-01').keyUriWithVersion), '/'), 1), sub(sub(length(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2022-07-01').keyUriWithVersion)), 1), lastIndexOf(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2022-07-01').keyUriWithVersion), '/')))]"
+                    "uri": "[string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2025-05-01').keyUriWithVersion)]",
+                    "version": "[substring(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2025-05-01').keyUriWithVersion), add(lastIndexOf(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2025-05-01').keyUriWithVersion), '/'), 1), sub(sub(length(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2025-05-01').keyUriWithVersion)), 1), lastIndexOf(string(reference(resourceId('Microsoft.KeyVault/vaults/keys', parameters('kvName'), parameters('encryptionKeyName')), '2025-05-01').keyUriWithVersion), '/')))]"
                   }
                 ]
               }
@@ -2836,15 +2661,14 @@
         }
       },
       "dependsOn": [
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "storageAccountModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-storageAccountDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgStorageName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -2855,22 +2679,25 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "saName": {
             "value": "[format('{0}sa', parameters('solutionName'))]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
+          },
+          "skuName": {
+            "value": "[parameters('storageSKU')]"
           },
           "keyName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].name]"
           },
           "keyVersion": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].version]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].version]"
           },
-          "keyVaultUri": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.uri]"
+          "keyVaultRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.uri]"
           }
         },
         "template": {
@@ -2880,12 +2707,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "7522621562344042066"
+              "templateHash": "10001516566994640207"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "minLength": 3,
               "maxLength": 15,
               "metadata": {
@@ -2913,18 +2741,7 @@
                 "Standard_ZRS"
               ],
               "metadata": {
-                "description": "SKU Name. The SKU name. Required for account creation; optional for update. Note that in older versions, SKU name was called accountType."
-              }
-            },
-            "skuTier": {
-              "type": "string",
-              "defaultValue": "Standard",
-              "allowedValues": [
-                "Premium",
-                "Standard"
-              ],
-              "metadata": {
-                "description": "SKU Tier. The SKU name. Required for account creation; optional for update. Note that in older versions, SKU name was called accountType."
+                "description": "SKU Name. The SKU name reequired for account creation; optional for update. Note that in older versions, SKU name was called accountType."
               }
             },
             "saName": {
@@ -2948,9 +2765,8 @@
                 "description": "Key Name. The name of KeyVault key."
               }
             },
-            "keyVaultUri": {
+            "keyVaultRef": {
               "type": "string",
-              "defaultValue": "",
               "metadata": {
                 "description": "Key Vault URI. The Uri of KeyVault."
               }
@@ -2980,12 +2796,11 @@
           "resources": [
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[parameters('saName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
-                "name": "[parameters('skuName')]",
-                "tier": "[parameters('skuTier')]"
+                "name": "[parameters('skuName')]"
               },
               "kind": "StorageV2",
               "identity": {
@@ -3000,8 +2815,6 @@
                 "isHnsEnabled": "[parameters('isHnsEnabled')]",
                 "networkAcls": {
                   "bypass": "AzureServices",
-                  "virtualNetworkRules": [],
-                  "ipRules": [],
                   "defaultAction": "Allow"
                 },
                 "supportsHttpsTrafficOnly": true,
@@ -3022,7 +2835,7 @@
                   "keySource": "Microsoft.KeyVault",
                   "keyvaultproperties": {
                     "keyname": "[parameters('keyName')]",
-                    "keyvaulturi": "[parameters('keyVaultUri')]",
+                    "keyvaulturi": "[parameters('keyVaultRef')]",
                     "keyversion": "[parameters('keyVersion')]"
                   }
                 }
@@ -3030,12 +2843,9 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('saName'), 'default')]",
               "properties": {
-                "cors": {
-                  "corsRules": []
-                },
                 "deleteRetentionPolicy": {
                   "allowPermanentDelete": true,
                   "enabled": true,
@@ -3048,7 +2858,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'filesys')]",
               "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -3061,7 +2871,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'public')]",
               "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -3074,12 +2884,9 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/fileServices",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('saName'), 'default')]",
               "properties": {
-                "cors": {
-                  "corsRules": []
-                },
                 "shareDeleteRetentionPolicy": {
                   "allowPermanentDelete": true,
                   "days": 60,
@@ -3092,12 +2899,11 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'containerinstance')]",
               "properties": {
                 "accessTier": "cool",
                 "enabledProtocols": "SMB",
-                "metadata": {},
                 "shareQuota": 8
               },
               "dependsOn": [
@@ -3112,11 +2918,9 @@
                 "id": "[resourceId('Microsoft.Storage/storageAccounts', parameters('saName'))]",
                 "name": "[parameters('saName')]",
                 "sku": "[parameters('skuName')]",
-                "uri": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').primaryEndpoints.web]",
-                "dfs": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').primaryEndpoints.dfs]",
+                "uri": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2025-06-01').primaryEndpoints.web]",
+                "dfs": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2025-06-01').primaryEndpoints.dfs]",
                 "storageAccountName": "[parameters('saName')]",
-                "key": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').keys[0].value]",
-                "connectionString": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('saName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').keys[0].value, environment().suffixes.storage)]",
                 "dataContainer": "default",
                 "blobs": [
                   {
@@ -3136,16 +2940,15 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "storageAccountModuleForMLWS": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgStorageName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -3159,19 +2962,22 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
+          },
+          "skuName": {
+            "value": "[parameters('storageSKU')]"
           },
           "keyName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].name]"
           },
           "keyVersion": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].version]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].version]"
           },
-          "keyVaultUri": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.uri]"
+          "keyVaultRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.uri]"
           },
           "isHnsEnabled": {
             "value": false
@@ -3184,12 +2990,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "7522621562344042066"
+              "templateHash": "10001516566994640207"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "minLength": 3,
               "maxLength": 15,
               "metadata": {
@@ -3217,18 +3024,7 @@
                 "Standard_ZRS"
               ],
               "metadata": {
-                "description": "SKU Name. The SKU name. Required for account creation; optional for update. Note that in older versions, SKU name was called accountType."
-              }
-            },
-            "skuTier": {
-              "type": "string",
-              "defaultValue": "Standard",
-              "allowedValues": [
-                "Premium",
-                "Standard"
-              ],
-              "metadata": {
-                "description": "SKU Tier. The SKU name. Required for account creation; optional for update. Note that in older versions, SKU name was called accountType."
+                "description": "SKU Name. The SKU name reequired for account creation; optional for update. Note that in older versions, SKU name was called accountType."
               }
             },
             "saName": {
@@ -3252,9 +3048,8 @@
                 "description": "Key Name. The name of KeyVault key."
               }
             },
-            "keyVaultUri": {
+            "keyVaultRef": {
               "type": "string",
-              "defaultValue": "",
               "metadata": {
                 "description": "Key Vault URI. The Uri of KeyVault."
               }
@@ -3284,12 +3079,11 @@
           "resources": [
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[parameters('saName')]",
               "location": "[parameters('solutionLocation')]",
               "sku": {
-                "name": "[parameters('skuName')]",
-                "tier": "[parameters('skuTier')]"
+                "name": "[parameters('skuName')]"
               },
               "kind": "StorageV2",
               "identity": {
@@ -3304,8 +3098,6 @@
                 "isHnsEnabled": "[parameters('isHnsEnabled')]",
                 "networkAcls": {
                   "bypass": "AzureServices",
-                  "virtualNetworkRules": [],
-                  "ipRules": [],
                   "defaultAction": "Allow"
                 },
                 "supportsHttpsTrafficOnly": true,
@@ -3326,7 +3118,7 @@
                   "keySource": "Microsoft.KeyVault",
                   "keyvaultproperties": {
                     "keyname": "[parameters('keyName')]",
-                    "keyvaulturi": "[parameters('keyVaultUri')]",
+                    "keyvaulturi": "[parameters('keyVaultRef')]",
                     "keyversion": "[parameters('keyVersion')]"
                   }
                 }
@@ -3334,12 +3126,9 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('saName'), 'default')]",
               "properties": {
-                "cors": {
-                  "corsRules": []
-                },
                 "deleteRetentionPolicy": {
                   "allowPermanentDelete": true,
                   "enabled": true,
@@ -3352,7 +3141,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'filesys')]",
               "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -3365,7 +3154,7 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'public')]",
               "properties": {
                 "defaultEncryptionScope": "$account-encryption-key",
@@ -3378,12 +3167,9 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/fileServices",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}', parameters('saName'), 'default')]",
               "properties": {
-                "cors": {
-                  "corsRules": []
-                },
                 "shareDeleteRetentionPolicy": {
                   "allowPermanentDelete": true,
                   "days": 60,
@@ -3396,12 +3182,11 @@
             },
             {
               "type": "Microsoft.Storage/storageAccounts/fileServices/shares",
-              "apiVersion": "2024-01-01",
+              "apiVersion": "2025-06-01",
               "name": "[format('{0}/{1}/{2}', parameters('saName'), 'default', 'containerinstance')]",
               "properties": {
                 "accessTier": "cool",
                 "enabledProtocols": "SMB",
-                "metadata": {},
                 "shareQuota": 8
               },
               "dependsOn": [
@@ -3416,11 +3201,9 @@
                 "id": "[resourceId('Microsoft.Storage/storageAccounts', parameters('saName'))]",
                 "name": "[parameters('saName')]",
                 "sku": "[parameters('skuName')]",
-                "uri": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').primaryEndpoints.web]",
-                "dfs": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').primaryEndpoints.dfs]",
+                "uri": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2025-06-01').primaryEndpoints.web]",
+                "dfs": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2025-06-01').primaryEndpoints.dfs]",
                 "storageAccountName": "[parameters('saName')]",
-                "key": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').keys[0].value]",
-                "connectionString": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix={2}', parameters('saName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('saName')), '2024-01-01').keys[0].value, environment().suffixes.storage)]",
                 "dataContainer": "default",
                 "blobs": [
                   {
@@ -3440,16 +3223,15 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "containerRegistryModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-containerRegistryDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgStorageName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -3460,7 +3242,7 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "armAudienceTokenPolicyStatus": {
             "value": "Enabled"
@@ -3469,16 +3251,16 @@
             "value": "Premium"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "managedIdentityPrincipalId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.objectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.objectId]"
           },
           "keyVaultIdentity": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.clientId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.clientId]"
           },
           "keyVaultKeyIdentifier": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].uri]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].uri]"
           },
           "keyVaultStatus": {
             "value": "Enabled"
@@ -3491,7 +3273,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "17966058211850413555"
+              "templateHash": "5338032697633301374"
             }
           },
           "parameters": {
@@ -3650,24 +3432,6 @@
                 "description": "Retetion Policy Datys. The retention policy for a container registry. Days is the number of days to retain an untagged manifest after which it gets purged."
               }
             },
-            "softDeletePolicyRetentionDays": {
-              "type": "int",
-              "defaultValue": 30,
-              "metadata": {
-                "description": "Soft Delete Policy Retention Days. The soft delete policy for a container registry. Retention Days is the number of days after which a soft-deleted item is permanently deleted."
-              }
-            },
-            "softDeletePolicyStatus": {
-              "type": "string",
-              "defaultValue": "Disabled",
-              "allowedValues": [
-                "Enabled",
-                "Disabled"
-              ],
-              "metadata": {
-                "description": "Soft Delete Policy Status. The soft delete policy for a container registry. Status is the value that indicates whether the policy is enabled or not."
-              }
-            },
             "trustPolicyStatus": {
               "type": "string",
               "defaultValue": "Disabled",
@@ -3712,7 +3476,7 @@
           "resources": [
             {
               "type": "Microsoft.ContainerRegistry/registries",
-              "apiVersion": "2025-05-01-preview",
+              "apiVersion": "2025-11-01",
               "name": "[parameters('crName')]",
               "location": "[parameters('solutionLocation')]",
               "tags": {
@@ -3753,10 +3517,6 @@
                     "days": "[parameters('retentionPolicyDays')]",
                     "status": "[parameters('retentionPolicyStatus')]"
                   },
-                  "softDeletePolicy": {
-                    "retentionDays": "[parameters('softDeletePolicyRetentionDays')]",
-                    "status": "[parameters('softDeletePolicyStatus')]"
-                  },
                   "trustPolicy": {
                     "status": "[parameters('trustPolicyStatus')]",
                     "type": "[parameters('trustPolicyType')]"
@@ -3793,16 +3553,15 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "logsAnalyticsWorkspaceModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-logAnalyticsWorkspaceDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgAnalyticsName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -3813,10 +3572,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           }
         },
         "template": {
@@ -3826,7 +3585,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "9500061081597913762"
+              "templateHash": "18188121462996364908"
             }
           },
           "parameters": {
@@ -3890,7 +3649,7 @@
           "resources": [
             {
               "type": "Microsoft.OperationalInsights/workspaces",
-              "apiVersion": "2023-09-01",
+              "apiVersion": "2025-07-01",
               "name": "[parameters('lawsName')]",
               "location": "[parameters('solutionLocation')]",
               "tags": {
@@ -3920,356 +3679,21 @@
               "value": {
                 "id": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('lawsName'))]",
                 "name": "[parameters('lawsName')]",
-                "workspaceId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('lawsName')), '2023-09-01').customerId]",
-                "workspaceKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('lawsName')), '2023-09-01').primarySharedKey]"
+                "workspaceId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('lawsName')), '2025-07-01').customerId]"
               }
             }
           }
         }
       },
       "dependsOn": [
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "containerInstanceWorkspaceModule": {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "[format('{0}-containerInstanceDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgServicesName')]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "solutionName": {
-            "value": "[parameters('solutionName')]"
-          },
-          "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
-          },
-          "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
-          },
-          "logAnalyticsWorkspaceResourceId": {
-            "value": "[reference('logsAnalyticsWorkspaceModule').outputs.logAnalyticsWorkspaceOutput.value.id]"
-          },
-          "logAnalyticsWorkspaceId": {
-            "value": "[reference('logsAnalyticsWorkspaceModule').outputs.logAnalyticsWorkspaceOutput.value.workspaceId]"
-          },
-          "logAnalyticsWorkspaceKey": {
-            "value": "[reference('logsAnalyticsWorkspaceModule').outputs.logAnalyticsWorkspaceOutput.value.workspaceKey]"
-          },
-          "encryptionKeyName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].name]"
-          },
-          "encryptionKeyVersion": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].version]"
-          },
-          "keyvaultBaseURL": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.uri]"
-          },
-          "storageAccountName": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.name]"
-          },
-          "storageAccountKey": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.key]"
-          },
-          "azureFileShareName": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.shares[0].name]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.39.26.7824",
-              "templateHash": "15322702419360456373"
-            }
-          },
-          "parameters": {
-            "solutionName": {
-              "type": "string",
-              "minLength": 3,
-              "maxLength": 15,
-              "metadata": {
-                "description": "Solution Name"
-              }
-            },
-            "solutionLocation": {
-              "type": "string",
-              "metadata": {
-                "description": "Solution Location"
-              }
-            },
-            "ciName": {
-              "type": "string",
-              "defaultValue": "[format('{0}-ci', parameters('solutionName'))]",
-              "metadata": {
-                "description": "Name"
-              }
-            },
-            "managedIdentityId": {
-              "type": "string",
-              "metadata": {
-                "description": "Managed Identity ID. The resource identifier of the UserAssigned identity to be used for the container instance deployment."
-              }
-            },
-            "containerImage": {
-              "type": "string",
-              "defaultValue": "mcr.microsoft.com/azuredeploymentscripts-powershell:az9.7",
-              "metadata": {
-                "description": "Container Image. The name of the image used to create the container instance.."
-              }
-            },
-            "volumeMountsName": {
-              "type": "string",
-              "defaultValue": "filesharevolume",
-              "metadata": {
-                "description": "Volume Mounts Name. The name of the volume mount."
-              }
-            },
-            "mountPath": {
-              "type": "string",
-              "defaultValue": "/mnt/azscripts/azscriptinput",
-              "metadata": {
-                "description": "Mount Path. The path within the container where the volume should be mounted. Must not contain colon (:)."
-              }
-            },
-            "logAnalyticsLogType": {
-              "type": "string",
-              "defaultValue": "ContainerInsights",
-              "allowedValues": [
-                "ContainerInsights",
-                "ContainerInstanceLogs"
-              ],
-              "metadata": {
-                "description": "Log Analytics Log Type. The log type to be used."
-              }
-            },
-            "logAnalyticsWorkspaceResourceId": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Log Analytics Workspace Resource Id. The workspace resource id for log analytics."
-              }
-            },
-            "logAnalyticsWorkspaceId": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Log Analytics Workspace Id. The workspace id for log analytics."
-              }
-            },
-            "logAnalyticsWorkspaceKey": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Log Analytics Workspace Key. The workspace key for log analytics."
-              }
-            },
-            "encryptionKeyName": {
-              "type": "string",
-              "defaultValue": "encryptionKey",
-              "metadata": {
-                "description": "Encryption Key Name. The encryption key name."
-              }
-            },
-            "encryptionKeyVersion": {
-              "type": "string",
-              "metadata": {
-                "description": "Encryption Key Version. The encryption key version."
-              }
-            },
-            "keyvaultBaseURL": {
-              "type": "string",
-              "metadata": {
-                "description": "Keyvault Base URL. The keyvault base url."
-              }
-            },
-            "osType": {
-              "type": "string",
-              "defaultValue": "Linux",
-              "allowedValues": [
-                "Linux",
-                "Windows"
-              ],
-              "metadata": {
-                "description": "OS Type. The operating system type required by the containers in the container group."
-              }
-            },
-            "priority": {
-              "type": "string",
-              "defaultValue": "Regular",
-              "allowedValues": [
-                "Regular",
-                "Spot"
-              ],
-              "metadata": {
-                "description": "Priority. The priority of the container group."
-              }
-            },
-            "restartPolicy": {
-              "type": "string",
-              "defaultValue": "OnFailure",
-              "allowedValues": [
-                "OnFailure",
-                "Always",
-                "Never"
-              ],
-              "metadata": {
-                "description": "Restart Policy. Restart policy for all containers within the container group."
-              }
-            },
-            "SKU": {
-              "type": "string",
-              "defaultValue": "Standard",
-              "allowedValues": [
-                "Confidential",
-                "Dedicated",
-                "Standard"
-              ],
-              "metadata": {
-                "description": ""
-              }
-            },
-            "volumeName": {
-              "type": "string",
-              "defaultValue": "filesharevolume",
-              "metadata": {
-                "description": "Volume Name. The name of the volume."
-              }
-            },
-            "storageAccountName": {
-              "type": "string",
-              "metadata": {
-                "description": "Storage Account Name. The name of the storage account that contains the Azure File share."
-              }
-            },
-            "storageAccountKey": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Storage Account Key. The storage account access key used to access the Azure File share."
-              }
-            },
-            "azureFileShareName": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure File Share Name. The name of the Azure File share to be mounted as a volume."
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.ContainerInstance/containerGroups",
-              "apiVersion": "2024-10-01-preview",
-              "name": "[parameters('ciName')]",
-              "location": "[parameters('solutionLocation')]",
-              "tags": {
-                "app": "[parameters('solutionName')]",
-                "location": "[parameters('solutionLocation')]"
-              },
-              "identity": {
-                "type": "UserAssigned",
-                "userAssignedIdentities": {
-                  "[format('{0}', parameters('managedIdentityId'))]": {}
-                }
-              },
-              "properties": {
-                "containers": [
-                  {
-                    "name": "[parameters('ciName')]",
-                    "properties": {
-                      "command": [
-                        "/bin/sh",
-                        "-c",
-                        "pwsh -c \"Start-Sleep -Seconds 1800\""
-                      ],
-                      "image": "[parameters('containerImage')]",
-                      "ports": [
-                        {
-                          "port": 80,
-                          "protocol": "TCP"
-                        }
-                      ],
-                      "resources": {
-                        "limits": {
-                          "cpu": 1,
-                          "memoryInGB": "[json('2')]"
-                        },
-                        "requests": {
-                          "cpu": 1,
-                          "memoryInGB": "[json('2')]"
-                        }
-                      },
-                      "volumeMounts": [
-                        {
-                          "name": "[parameters('volumeMountsName')]",
-                          "mountPath": "[parameters('mountPath')]",
-                          "readOnly": false
-                        }
-                      ]
-                    }
-                  }
-                ],
-                "diagnostics": {
-                  "logAnalytics": {
-                    "logType": "[parameters('logAnalyticsLogType')]",
-                    "metadata": {},
-                    "workspaceResourceId": "[parameters('logAnalyticsWorkspaceResourceId')]",
-                    "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
-                    "workspaceKey": "[parameters('logAnalyticsWorkspaceKey')]"
-                  }
-                },
-                "encryptionProperties": {
-                  "identity": "[parameters('managedIdentityId')]",
-                  "keyName": "[parameters('encryptionKeyName')]",
-                  "keyVersion": "[parameters('encryptionKeyVersion')]",
-                  "vaultBaseUrl": "[parameters('keyvaultBaseURL')]"
-                },
-                "osType": "[parameters('osType')]",
-                "priority": "[parameters('priority')]",
-                "restartPolicy": "[parameters('restartPolicy')]",
-                "sku": "[parameters('SKU')]",
-                "volumes": [
-                  {
-                    "name": "[parameters('volumeName')]",
-                    "azureFile": {
-                      "storageAccountName": "[parameters('storageAccountName')]",
-                      "storageAccountKey": "[parameters('storageAccountKey')]",
-                      "shareName": "[parameters('azureFileShareName')]",
-                      "readOnly": false
-                    }
-                  }
-                ]
-              }
-            }
-          ],
-          "outputs": {
-            "containerInstanceOutput": {
-              "type": "object",
-              "value": {
-                "id": "[resourceId('Microsoft.ContainerInstance/containerGroups', parameters('ciName'))]",
-                "name": "[parameters('ciName')]"
-              }
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "containerRegistryModule",
-        "keyvaultModule",
-        "logsAnalyticsWorkspaceModule",
-        "managedIdentityModule",
-        "resourceGroupsModule",
-        "storageAccountModule"
-      ]
-    },
-    "applicationInsightsModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-applicationInsightsDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgAnalyticsName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -4280,10 +3704,10 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "workspaceResourceId": {
-            "value": "[reference('logsAnalyticsWorkspaceModule').outputs.logAnalyticsWorkspaceOutput.value.Id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-logAnalyticsWorkspaceDeployment', parameters('solutionName'))), '2025-04-01').outputs.logAnalyticsWorkspaceOutput.value.Id]"
           }
         },
         "template": {
@@ -4429,15 +3853,14 @@
         }
       },
       "dependsOn": [
-        "logsAnalyticsWorkspaceModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-logAnalyticsWorkspaceDeployment', parameters('solutionName')))]"
       ]
     },
-    "kubernetesServicesModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-kubernetesServicesDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgServicesName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -4448,7 +3871,7 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "dnsPrefix": {
             "value": "[parameters('solutionName')]"
@@ -4463,22 +3886,28 @@
             "value": "[parameters('sshRSAPublicKey')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "managedIdentityPrincipalId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.objectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.objectId]"
           },
           "enableAzureRBAC": {
             "value": true
           },
           "servicesSubnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
+          },
+          "agentVMSize": {
+            "value": "[parameters('aksVMSize')]"
+          },
+          "agentCount": {
+            "value": "[parameters('aksVMCount')]"
           },
           "orchestratorVersion": {
             "value": "1.32.7"
           },
           "keyId": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].uri]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].uri]"
           },
           "keyVaultKmsEnabled": {
             "value": true
@@ -4487,16 +3916,16 @@
             "value": true
           },
           "logAnalyticsWorkspaceResourceId": {
-            "value": "[reference('logsAnalyticsWorkspaceModule').outputs.logAnalyticsWorkspaceOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-logAnalyticsWorkspaceDeployment', parameters('solutionName'))), '2025-04-01').outputs.logAnalyticsWorkspaceOutput.value.id]"
           },
           "webAppRoutingEnabled": {
             "value": true
           },
           "dnsZoneResourceId": {
-            "value": "[reference('dnsZonesModule').outputs.dnsZonesOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName'))), '2025-04-01').outputs.dnsZonesOutput.value.id]"
           },
           "appGatewayId": {
-            "value": "[reference('appGatewayModule').outputs.appGatewayOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-appGatewayDeployment', parameters('solutionName'))), '2025-04-01').outputs.appGatewayOutput.value.id]"
           }
         },
         "template": {
@@ -4506,13 +3935,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "2223283224317229191"
+              "templateHash": "2462776784050451391"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
-              "defaultValue": "",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "metadata": {
                 "description": "Solution Name."
               }
@@ -4710,7 +4139,7 @@
           "resources": [
             {
               "type": "Microsoft.ContainerService/managedClusters",
-              "apiVersion": "2025-03-02-preview",
+              "apiVersion": "2025-09-01",
               "name": "[variables('ksName')]",
               "location": "[parameters('solutionLocation')]",
               "tags": {
@@ -4755,7 +4184,6 @@
                       "code": "Running"
                     },
                     "orchestratorVersion": "[parameters('orchestratorVersion')]",
-                    "upgradeSettings": {},
                     "enableFIPS": false
                   }
                 ],
@@ -4835,7 +4263,6 @@
                 "oidcIssuerProfile": {
                   "enabled": false
                 },
-                "workloadAutoScalerProfile": {},
                 "metricsProfile": {
                   "costAnalysis": {
                     "enabled": false
@@ -4864,29 +4291,28 @@
               "value": {
                 "id": "[resourceId('Microsoft.ContainerService/managedClusters', variables('ksName'))]",
                 "name": "[variables('ksName')]",
-                "kubeletIdentityClientId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('ksName')), '2025-03-02-preview').addonProfiles.ingressApplicationGateway.identity.clientId]",
-                "kubeletIdentityObjectId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('ksName')), '2025-03-02-preview').addonProfiles.ingressApplicationGateway.identity.objectId]"
+                "kubeletIdentityClientId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('ksName')), '2025-09-01').addonProfiles.ingressApplicationGateway.identity.clientId]",
+                "kubeletIdentityObjectId": "[reference(resourceId('Microsoft.ContainerService/managedClusters', variables('ksName')), '2025-09-01').addonProfiles.ingressApplicationGateway.identity.objectId]"
               }
             }
           }
         }
       },
       "dependsOn": [
-        "appGatewayModule",
-        "containerRegistryModule",
-        "dnsZonesModule",
-        "keyvaultModule",
-        "logsAnalyticsWorkspaceModule",
-        "managedIdentityModule",
-        "resourceGroupsModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-appGatewayDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-dnsZonesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-logAnalyticsWorkspaceDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "agicReaderRoleAssignmentToNetworkRG": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-agicReaderRoleAssignment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -4894,10 +4320,10 @@
         "mode": "Incremental",
         "parameters": {
           "kubeletIdentityClientId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
           },
           "kubeletIdentityObjectId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
           }
         },
         "template": {
@@ -4941,15 +4367,14 @@
         }
       },
       "dependsOn": [
-        "kubernetesServicesModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]"
       ]
     },
-    "agicContributorRoleAssignment": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-agicContributorRoleAssignment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -4957,19 +4382,19 @@
         "mode": "Incremental",
         "parameters": {
           "appGatewayName": {
-            "value": "[reference('appGatewayModule').outputs.appGatewayOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-appGatewayDeployment', parameters('solutionName'))), '2025-04-01').outputs.appGatewayOutput.value.name]"
           },
           "kubeletIdentityClientId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
           },
           "kubeletIdentityObjectId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
           },
           "appGatewaySubnetName": {
-            "value": "[format('{0}/{1}', reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.name, reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.appGatewaySubnet.name)]"
+            "value": "[format('{0}/{1}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.name, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.appGatewaySubnet.name)]"
           },
           "servicesSubnetName": {
-            "value": "[format('{0}/{1}', reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.name, reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.servicesSubnet.name)]"
+            "value": "[format('{0}/{1}', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.name, reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.servicesSubnet.name)]"
           }
         },
         "template": {
@@ -5056,17 +4481,16 @@
         }
       },
       "dependsOn": [
-        "appGatewayModule",
-        "kubernetesServicesModule",
-        "resourceGroupsModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-appGatewayDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "agicManagedIdentityOperatorRoleAssignment": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-agicManagedIdentityOperatorRoleAssignment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgServicesName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5074,16 +4498,16 @@
         "mode": "Incremental",
         "parameters": {
           "managedIdentityClientId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "managedIdentityName": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.name]"
           },
           "kubeletIdentityClientId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityClientId]"
           },
           "kubeletIdentityObjectId": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.kubeletIdentityObjectId]"
           }
         },
         "template": {
@@ -5140,16 +4564,15 @@
         }
       },
       "dependsOn": [
-        "kubernetesServicesModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "sqlServerModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-sqlServerDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgDataName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5160,19 +4583,19 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "sqlAdminUsername": {
-            "value": "[parameters('sqlAdminLogin')]"
+            "value": "[parameters('sqlAdminUsername')]"
           },
           "sqlAdminPassword": {
             "value": "[parameters('sqlAdminPassword')]"
           },
-          "dataEncryptionKeyURI": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].uri]"
+          "dataEncryptionKeyRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].uri]"
           }
         },
         "template": {
@@ -5182,7 +4605,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11033833523225131390"
+              "templateHash": "8255784116628793254"
             }
           },
           "parameters": {
@@ -5249,7 +4672,7 @@
                 "description": "Is IP V6 Enabled. Whether or not to enable IPv6 support for this server. Value is optional but if passed in, must be \"Enabled\" or \"Disabled\""
               }
             },
-            "dataEncryptionKeyURI": {
+            "dataEncryptionKeyRef": {
               "type": "string",
               "metadata": {
                 "description": "Data Encryption Key URI. A CMK URI of the key to use for encryption."
@@ -5302,7 +4725,7 @@
                 "administratorLogin": "[parameters('sqlAdminUsername')]",
                 "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
                 "isIPv6Enabled": "[parameters('isIPv6Enabled')]",
-                "keyId": "[parameters('dataEncryptionKeyURI')]",
+                "keyId": "[parameters('dataEncryptionKeyRef')]",
                 "minimalTlsVersion": "[parameters('minimalTlsVersion')]",
                 "primaryUserAssignedIdentityId": "[parameters('managedIdentityId')]",
                 "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
@@ -5322,16 +4745,15 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "dataFactoryModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-dataFactoryDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgDataName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5342,19 +4764,19 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "encryptionKeyName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].name]"
           },
           "encryptionKeyVersion": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].version]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].version]"
           },
-          "encryptionKeyVaultUri": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.uri]"
+          "encryptionKeyVaultRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.uri]"
           }
         },
         "template": {
@@ -5364,7 +4786,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "4732827365640590041"
+              "templateHash": "10914242022668025383"
             }
           },
           "parameters": {
@@ -5414,7 +4836,7 @@
                 "description": "Encryption Key Version. The version of KeyVault key."
               }
             },
-            "encryptionKeyVaultUri": {
+            "encryptionKeyVaultRef": {
               "type": "string",
               "defaultValue": "",
               "metadata": {
@@ -5448,7 +4870,7 @@
                   },
                   "keyName": "[parameters('encryptionKeyName')]",
                   "keyVersion": "[parameters('encryptionKeyVersion')]",
-                  "vaultBaseUrl": "[parameters('encryptionKeyVaultUri')]"
+                  "vaultBaseUrl": "[parameters('encryptionKeyVaultRef')]"
                 },
                 "publicNetworkAccess": "[parameters('publicNetworkAccess')]"
               }
@@ -5466,16 +4888,15 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]"
       ]
     },
-    "machineLearningWorkspaceModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-machineLearningWorkspaceDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgAIName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5486,22 +4907,22 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "keyVault": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.id]"
           },
           "storageAccount": {
-            "value": "[reference('storageAccountModuleForMLWS').outputs.storageAccountOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.id]"
           },
           "containerRegistry": {
-            "value": "[reference('containerRegistryModule').outputs.containerRegistryOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName'))), '2025-04-01').outputs.containerRegistryOutput.value.id]"
           },
           "applicationInsights": {
-            "value": "[reference('applicationInsightsModule').outputs.applicationInsightsOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-applicationInsightsDeployment', parameters('solutionName'))), '2025-04-01').outputs.applicationInsightsOutput.value.id]"
           }
         },
         "template": {
@@ -5511,7 +4932,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "17819699656727421453"
+              "templateHash": "5355918071966831318"
             }
           },
           "parameters": {
@@ -5597,7 +5018,7 @@
             }
           },
           "variables": {
-            "discoveryURL": "[format('https://{0}.api.azureml.ms/discovery', parameters('solutionLocation'))]"
+            "discoveryRef": "[uri(format('https://{0}.api.azureml.ms/discovery', parameters('solutionLocation')), '/')]"
           },
           "resources": [
             {
@@ -5625,7 +5046,7 @@
                 "v1LegacyMode": false,
                 "containerRegistry": "[parameters('containerRegistry')]",
                 "publicNetworkAccess": "[parameters('publicNetworkAccess')]",
-                "discoveryUrl": "[variables('discoveryURL')]"
+                "discoveryUrl": "[variables('discoveryRef')]"
               }
             }
           ],
@@ -5641,19 +5062,18 @@
         }
       },
       "dependsOn": [
-        "applicationInsightsModule",
-        "containerRegistryModule",
-        "keyvaultModule",
-        "managedIdentityModule",
-        "resourceGroupsModule",
-        "storageAccountModuleForMLWS"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-applicationInsightsDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName')))]"
       ]
     },
-    "dbwsKeyVaultCryptoServiceEncryptionUserRoleAssignment": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-dbwskvCryptoServiceEncryptionUserRoleAssignment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgStorageName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5667,7 +5087,7 @@
             "value": "[variables('azureDatabricksEnterpriseApplicationObjectId')]"
           },
           "keyvaultName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.name]"
           }
         },
         "template": {
@@ -5718,15 +5138,14 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]"
       ]
     },
-    "databricksWorkspaceModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-databricksWorkspaceDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgDataName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -5737,43 +5156,43 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "dbwsName": {
             "value": "[format('{0}-dbws', parameters('solutionName'))]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           },
           "managedIdentityPrincipalId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.objectId]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.objectId]"
           },
           "amlWorkspaceId": {
-            "value": "[reference('machineLearningWorkspaceModule').outputs.machineLearningWorkspaceOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-machineLearningWorkspaceDeployment', parameters('solutionName'))), '2025-04-01').outputs.machineLearningWorkspaceOutput.value.id]"
           },
           "customVirtualNetworkId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.id]"
           },
           "customPrivateSubnetName": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.databricksSubnetPrivate.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.databricksSubnetPrivate.name]"
           },
           "customPublicSubnetName": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.databricksSubnetPublic.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.databricksSubnetPublic.name]"
           },
           "storageAccountName": {
             "value": "[format('{0}dbwssa', parameters('solutionName'))]"
           },
           "storageAccountSKU": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.sku]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeployment', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.sku]"
           },
-          "keyVaultUri": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.uri]"
+          "keyVaultRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.uri]"
           },
           "encryptionKeyName": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].name]"
           },
           "encryptionKeyVersion": {
-            "value": "[reference('keyvaultModule').outputs.keyvaultOutput.value.keys[0].version]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName'))), '2025-04-01').outputs.keyvaultOutput.value.keys[0].version]"
           }
         },
         "template": {
@@ -5784,7 +5203,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "11829855766524616421"
+              "templateHash": "314233517539280558"
             }
           },
           "parameters": {
@@ -5899,9 +5318,8 @@
                 "description": "Storage Account SKU. The SKU of the storage account to be associated with this workspace."
               }
             },
-            "keyVaultUri": {
+            "keyVaultRef": {
               "type": "string",
-              "defaultValue": "",
               "metadata": {
                 "description": "Encryption Key Vault Uri. The URI of the key vault to be used for encryption at rest with customer-managed keys."
               }
@@ -5986,7 +5404,7 @@
                     "managedDisk": {
                       "keySource": "Microsoft.Keyvault",
                       "keyVaultProperties": {
-                        "keyVaultUri": "[parameters('keyVaultUri')]",
+                        "keyVaultUri": "[parameters('keyVaultRef')]",
                         "keyName": "[parameters('encryptionKeyName')]",
                         "keyVersion": "[parameters('encryptionKeyVersion')]"
                       },
@@ -5995,7 +5413,7 @@
                     "managedServices": {
                       "keySource": "Microsoft.Keyvault",
                       "keyVaultProperties": {
-                        "keyVaultUri": "[parameters('keyVaultUri')]",
+                        "keyVaultUri": "[parameters('keyVaultRef')]",
                         "keyName": "[parameters('encryptionKeyName')]",
                         "keyVersion": "[parameters('encryptionKeyVersion')]"
                       }
@@ -6067,20 +5485,19 @@
         }
       },
       "dependsOn": [
-        "keyvaultModule",
-        "machineLearningWorkspaceModule",
-        "managedIdentityModule",
-        "resourceGroupsModule",
-        "storageAccountModule",
-        "virtualNetworkGatewayModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-keyvaultDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-machineLearningWorkspaceDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkGatewayDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "synapseAnalyticsWorkspaceModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-synapseAnalyticsWorkspaceDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgAnalyticsName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6091,19 +5508,19 @@
             "value": "[parameters('solutionName')]"
           },
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "dlsResourceId": {
-            "value": "[reference('storageAccountModuleForMLWS').outputs.storageAccountOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.id]"
           },
-          "dlsAccountUrl": {
-            "value": "[reference('storageAccountModuleForMLWS').outputs.storageAccountOutput.value.dfs]"
+          "dlsAccountRef": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.dfs]"
           },
           "dlsFileSystem": {
-            "value": "[reference('storageAccountModuleForMLWS').outputs.storageAccountOutput.value.dataContainer]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.dataContainer]"
           },
           "managedIdentityId": {
-            "value": "[reference('managedIdentityModule').outputs.managedIdentityOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName'))), '2025-04-01').outputs.managedIdentityOutput.value.id]"
           }
         },
         "template": {
@@ -6113,12 +5530,13 @@
             "_generator": {
               "name": "bicep",
               "version": "0.39.26.7824",
-              "templateHash": "15144786389117666633"
+              "templateHash": "5030201244799096082"
             }
           },
           "parameters": {
             "solutionName": {
               "type": "string",
+              "defaultValue": "[substring(guid(subscription().id, tenant().tenantId), 0, 15)]",
               "metadata": {
                 "description": "Solution Name"
               }
@@ -6130,7 +5548,7 @@
                 "description": "Solution Location"
               }
             },
-            "dlsAccountUrl": {
+            "dlsAccountRef": {
               "type": "string",
               "defaultValue": "",
               "metadata": {
@@ -6163,7 +5581,7 @@
           "resources": [
             {
               "type": "Microsoft.Synapse/workspaces",
-              "apiVersion": "2021-06-01",
+              "apiVersion": "2023-05-01",
               "name": "[variables('sawsName')]",
               "location": "[parameters('solutionLocation')]",
               "identity": {
@@ -6176,12 +5594,10 @@
                 "defaultDataLakeStorage": {
                   "resourceId": "[parameters('dlsResourceId')]",
                   "createManagedPrivateEndpoint": false,
-                  "accountUrl": "[parameters('dlsAccountUrl')]",
+                  "accountUrl": "[parameters('dlsAccountRef')]",
                   "filesystem": "[parameters('dlsFileSystem')]"
                 },
-                "encryption": {},
                 "sqlAdministratorLogin": "sqladminuser",
-                "privateEndpointConnections": [],
                 "publicNetworkAccess": "Enabled",
                 "azureADOnlyAuthentication": false,
                 "trustedServiceBypassEnabled": true
@@ -6189,7 +5605,7 @@
             },
             {
               "type": "Microsoft.Synapse/workspaces/azureADOnlyAuthentications",
-              "apiVersion": "2021-06-01",
+              "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}', variables('sawsName'), 'default')]",
               "properties": {
                 "azureADOnlyAuthentication": false
@@ -6231,7 +5647,7 @@
             },
             {
               "type": "Microsoft.Synapse/workspaces/dedicatedSQLminimalTlsSettings",
-              "apiVersion": "2021-06-01",
+              "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}', variables('sawsName'), 'default')]",
               "properties": {
                 "minimalTlsVersion": "1.2"
@@ -6265,8 +5681,8 @@
               ]
             },
             {
-              "type": "Microsoft.Synapse/workspaces/integrationRuntimes",
-              "apiVersion": "2021-06-01",
+              "type": "Microsoft.Synapse/workspaces/integrationruntimes",
+              "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}', variables('sawsName'), 'AutoResolveIntegrationRuntime')]",
               "properties": {
                 "type": "Managed",
@@ -6293,15 +5709,15 @@
         }
       },
       "dependsOn": [
-        "managedIdentityModule",
-        "storageAccountModuleForMLWS"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-managedIdentityDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeploymentForMLWS', parameters('solutionName')))]"
       ]
     },
-    "privateEndpointAKStoASAModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateEndpointFromAKSToASADeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6309,19 +5725,19 @@
         "mode": "Incremental",
         "parameters": {
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "serviceName": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.name]"
           },
           "subnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
           },
           "resourceNameForPE": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeployment', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.name]"
           },
           "resourceIdForPE": {
-            "value": "[reference('storageAccountModule').outputs.storageAccountOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeployment', parameters('solutionName'))), '2025-04-01').outputs.storageAccountOutput.value.id]"
           },
           "resourceGroupIdsForPE": {
             "value": [
@@ -6416,17 +5832,16 @@
         }
       },
       "dependsOn": [
-        "kubernetesServicesModule",
-        "resourceGroupsModule",
-        "storageAccountModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-storageAccountDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "privateDnsZoneAKStoASAModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateDnsZoneFromAKSToASADeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6437,7 +5852,7 @@
             "value": "[parameters('solutionName')]"
           },
           "privateEndPointName": {
-            "value": "[reference('privateEndpointAKStoASAModule').outputs.resourcePrivateEndPointOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToASADeployment', parameters('solutionName'))), '2025-04-01').outputs.resourcePrivateEndPointOutput.value.name]"
           },
           "privateDNSZoneName": {
             "value": "[format('{0}.privatelink.blob.{1}', parameters('solutionName'), environment().suffixes.storage)]"
@@ -6511,15 +5926,14 @@
         }
       },
       "dependsOn": [
-        "privateEndpointAKStoASAModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToASADeployment', parameters('solutionName')))]"
       ]
     },
-    "privateEndpointAKStoACRModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateEndpointFromAKSToACRDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6527,19 +5941,19 @@
         "mode": "Incremental",
         "parameters": {
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "serviceName": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.name]"
           },
           "subnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
           },
           "resourceNameForPE": {
-            "value": "[reference('containerRegistryModule').outputs.containerRegistryOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName'))), '2025-04-01').outputs.containerRegistryOutput.value.name]"
           },
           "resourceIdForPE": {
-            "value": "[reference('containerRegistryModule').outputs.containerRegistryOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName'))), '2025-04-01').outputs.containerRegistryOutput.value.id]"
           },
           "resourceGroupIdsForPE": {
             "value": [
@@ -6634,17 +6048,16 @@
         }
       },
       "dependsOn": [
-        "containerRegistryModule",
-        "kubernetesServicesModule",
-        "resourceGroupsModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-containerRegistryDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "privateDnsZoneAKStoACRModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateDnsZoneFromAKSToACRDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6655,7 +6068,7 @@
             "value": "[parameters('solutionName')]"
           },
           "privateEndPointName": {
-            "value": "[reference('privateEndpointAKStoACRModule').outputs.resourcePrivateEndPointOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToACRDeployment', parameters('solutionName'))), '2025-04-01').outputs.resourcePrivateEndPointOutput.value.name]"
           },
           "privateDNSZoneName": {
             "value": "[format('{0}.privatelink{1}', parameters('solutionName'), environment().suffixes.acrLoginServer)]"
@@ -6729,15 +6142,14 @@
         }
       },
       "dependsOn": [
-        "privateEndpointAKStoACRModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToACRDeployment', parameters('solutionName')))]"
       ]
     },
-    "privateEndpointAKStoSQLModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateEndpointFromAKSToSQLDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6745,19 +6157,19 @@
         "mode": "Incremental",
         "parameters": {
           "solutionLocation": {
-            "value": "[variables('solutionLocation')]"
+            "value": "[parameters('Location')]"
           },
           "serviceName": {
-            "value": "[reference('kubernetesServicesModule').outputs.kubernetesServicesOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName'))), '2025-04-01').outputs.kubernetesServicesOutput.value.name]"
           },
           "subnetId": {
-            "value": "[reference('virtualNetworkModule').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName'))), '2025-04-01').outputs.virtualNetworkOutput.value.servicesSubnet.id]"
           },
           "resourceNameForPE": {
-            "value": "[reference('sqlServerModule').outputs.sqlServerOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-sqlServerDeployment', parameters('solutionName'))), '2025-04-01').outputs.sqlServerOutput.value.name]"
           },
           "resourceIdForPE": {
-            "value": "[reference('sqlServerModule').outputs.sqlServerOutput.value.id]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-sqlServerDeployment', parameters('solutionName'))), '2025-04-01').outputs.sqlServerOutput.value.id]"
           },
           "resourceGroupIdsForPE": {
             "value": [
@@ -6852,17 +6264,16 @@
         }
       },
       "dependsOn": [
-        "kubernetesServicesModule",
-        "resourceGroupsModule",
-        "sqlServerModule",
-        "virtualNetworkModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-kubernetesServicesDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-sqlServerDeployment', parameters('solutionName')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-virtualNetworkDeployment', parameters('solutionName')))]"
       ]
     },
-    "privateDnsZoneAKStoSQLModule": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "[format('{0}-privateDnsZoneFromAKSToSQLDeployment', parameters('solutionName'))]",
-      "resourceGroup": "[variables('rgNetworkName')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -6873,7 +6284,7 @@
             "value": "[parameters('solutionName')]"
           },
           "privateEndPointName": {
-            "value": "[reference('privateEndpointAKStoSQLModule').outputs.resourcePrivateEndPointOutput.value.name]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToSQLDeployment', parameters('solutionName'))), '2025-04-01').outputs.resourcePrivateEndPointOutput.value.name]"
           },
           "privateDNSZoneName": {
             "value": "[format('{0}.privatelink{1}', parameters('solutionName'), environment().suffixes.sqlServerHostname)]"
@@ -6947,9 +6358,8 @@
         }
       },
       "dependsOn": [
-        "privateEndpointAKStoSQLModule",
-        "resourceGroupsModule"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managedResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-privateEndpointFromAKSToSQLDeployment', parameters('solutionName')))]"
       ]
     }
-  }
+  ]
 }

@@ -45,6 +45,7 @@ resource deploymentScriptRoleDefinition 'Microsoft.Authorization/roleDefinitions
           'Microsoft.ContainerInstance/containerGroups/*'
           'Microsoft.Resources/deployments/*'
           'Microsoft.Resources/deploymentScripts/*'
+          'Microsoft.Authorization/roleAssignments/*'
           'Microsoft.Storage/register/action'
           'Microsoft.ContainerInstance/register/action'
         ]

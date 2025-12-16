@@ -2,7 +2,7 @@
 targetScope = 'resourceGroup'
 
 @description('Solution Name.')
-param solutionName string = ''
+param solutionName string = substring(guid(subscription().id, tenant().tenantId), 0, 15)
 
 @description('Solution Location.')
 param solutionLocation string = resourceGroup().location
@@ -98,7 +98,7 @@ param dnsZoneResourceId string
 @description('Application Gateway Id. The resource ID of the Application Gateway to be used for ingress. This is required when using the Application Gateway Ingress Controller addon.')
 param appGatewayId string 
 
-resource kubernetesServices 'Microsoft.ContainerService/managedClusters@2025-03-02-preview' = {
+resource kubernetesServices 'Microsoft.ContainerService/managedClusters@2025-09-01' = {
   name: ksName
   location: solutionLocation
   tags: {
@@ -136,14 +136,13 @@ resource kubernetesServices 'Microsoft.ContainerService/managedClusters@2025-03-
         kubeletDiskType: 'OS'
         maxPods: 110
         type: 'VirtualMachineScaleSets'
-        maxCount: 3
+        maxCount: 250
         minCount: 1
         enableAutoScaling: true
         powerState: {
           code: 'Running'
         }
         orchestratorVersion: orchestratorVersion   
-        upgradeSettings: {}
         enableFIPS: false          
       }
     ]
@@ -223,7 +222,6 @@ resource kubernetesServices 'Microsoft.ContainerService/managedClusters@2025-03-
     oidcIssuerProfile: {
       enabled: false
     }
-    workloadAutoScalerProfile: {}
     metricsProfile: {
       costAnalysis: {
         enabled: false

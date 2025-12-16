@@ -36,7 +36,7 @@ param sqlAdminPassword string
 param isIPv6Enabled string = 'Disabled'
 
 @description('Data Encryption Key URI. A CMK URI of the key to use for encryption.')
-param dataEncryptionKeyURI string
+param dataEncryptionKeyRef string
 
 @description('Minimal TLS Version. Allowed values "None", "1.0", "1.1", "1.2", "1.3"')
 param minimalTlsVersion string = '1.2'
@@ -69,7 +69,7 @@ resource sqlServer 'Microsoft.Sql/servers@2024-11-01-preview' = {
     administratorLogin: sqlAdminUsername
     administratorLoginPassword: sqlAdminPassword
     isIPv6Enabled: isIPv6Enabled
-    keyId: dataEncryptionKeyURI
+    keyId: dataEncryptionKeyRef
     minimalTlsVersion: minimalTlsVersion
     primaryUserAssignedIdentityId: managedIdentityId
     publicNetworkAccess: publicNetworkAccess

@@ -4,7 +4,7 @@ targetScope = 'resourceGroup'
 @minLength(3)
 @maxLength(15)
 @description('Solution Name')
-param solutionName string
+param solutionName string = substring(guid(subscription().id, tenant().tenantId), 0, 15)
 
 @description('Solution Location')
 param solutionLocation string = resourceGroup().location
@@ -29,8 +29,6 @@ resource networkSecurityGroupAppGateway 'Microsoft.Network/networkSecurityGroups
     location: solutionLocation
   }
   properties: {
-    securityRules: [    
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -43,8 +41,6 @@ resource networkSecurityGroupServices 'Microsoft.Network/networkSecurityGroups@2
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -57,8 +53,6 @@ resource networkSecurityGroupDatabricksPrivate 'Microsoft.Network/networkSecurit
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -71,8 +65,6 @@ resource networkSecurityGroupDatabricksPublic 'Microsoft.Network/networkSecurity
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -85,8 +77,6 @@ resource networkSecurityGroupVirtualNetworkGateway 'Microsoft.Network/networkSec
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -99,8 +89,6 @@ resource networkSecurityGroupLocalNetworkGateway 'Microsoft.Network/networkSecur
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }
@@ -113,8 +101,6 @@ resource networkSecurityGroupNatGateway 'Microsoft.Network/networkSecurityGroups
     location: solutionLocation
   }
   properties: {
-    securityRules: [
-    ]
     flushConnection: nsgFlushConnection
   }
 }

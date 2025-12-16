@@ -54,7 +54,7 @@ param sku string = 'standard'
 param tenantId string
 
 @description('Vault URI. The URI of the vault for performing operations on keys and secrets.')
-var vaultUri = 'https://${ kvName }.vault.azure.net/'
+var vaultRef = uri('https://${kvName}${environment().suffixes.keyvaultDns}', '/')
 
 @description('Managed Identity Object Id. The object id of the managed identity that will access the Key Vault.')
 param managedIdentityPrincipalId string
@@ -102,7 +102,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2025-05-01' = {
       name: sku
     }    
     tenantId: tenantId
-    vaultUri: vaultUri
+    vaultUri: vaultRef
   }
 }
 
@@ -126,7 +126,7 @@ param encryptionKeyName string = 'encryptionKey'
 
 param expDate int = dateTimeToEpoch(dateTimeAdd(utcNow(), 'P6M'))
 
-resource encryptionKey 'Microsoft.KeyVault/vaults/keys@2022-07-01' = {
+resource encryptionKey 'Microsoft.KeyVault/vaults/keys@2025-05-01' = {
   parent: keyVault
   name: encryptionKeyName
   tags: {
@@ -177,17 +177,17 @@ resource managedIdentityKVCryptoServiceEncryptionUserRoleAssignment 'Microsoft.A
   }
 }
 
-var keyFullURI = string(encryptionKey.properties.keyUriWithVersion)
-var version = substring(keyFullURI, lastIndexOf(keyFullURI, '/') + 1, (length(keyFullURI) - 1) - lastIndexOf(keyFullURI, '/'))
+var keyFullRef = string(encryptionKey.properties.keyUriWithVersion)
+var version = substring(keyFullRef, lastIndexOf(keyFullRef, '/') + 1, (length(keyFullRef) - 1) - lastIndexOf(keyFullRef, '/'))
 
 output keyvaultOutput object = {
   id: keyVault.id
   name: kvName
-  uri: vaultUri
+  uri: vaultRef
   keys: [     
     {
       name: encryptionKey.name
-      uri: keyFullURI
+      uri: keyFullRef
       version: version
     }
   ]

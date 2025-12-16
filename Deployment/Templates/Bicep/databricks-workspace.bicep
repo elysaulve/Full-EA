@@ -60,7 +60,7 @@ param storageAccountName string  = '${solutionName}dbwssa'
 param storageAccountSKU string = 'Standard_LRS'
 
 @description('Encryption Key Vault Uri. The URI of the key vault to be used for encryption at rest with customer-managed keys.')
-param keyVaultUri string = ''
+param keyVaultRef string
 
 @description('Encryption Key Name. The name of the key in Key Vault to be used for encryption at rest with customer-managed keys.') 
 param encryptionKeyName string = ''
@@ -127,7 +127,7 @@ resource databricksWorkspace 'Microsoft.Databricks/workspaces@2025-03-01-preview
         managedDisk: {
           keySource: 'Microsoft.Keyvault'
           keyVaultProperties: {
-            keyVaultUri: keyVaultUri
+            keyVaultUri: keyVaultRef
             keyName: encryptionKeyName
             keyVersion: encryptionKeyVersion
           }
@@ -136,7 +136,7 @@ resource databricksWorkspace 'Microsoft.Databricks/workspaces@2025-03-01-preview
         managedServices: {
           keySource: 'Microsoft.Keyvault'
           keyVaultProperties: {
-            keyVaultUri: keyVaultUri
+            keyVaultUri: keyVaultRef
             keyName: encryptionKeyName
             keyVersion: encryptionKeyVersion
           }

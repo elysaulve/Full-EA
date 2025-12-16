@@ -42,7 +42,7 @@ param skuName string = 'Basic'
 ])
 param skuTier string = 'Basic'
 
-var discoveryURL = 'https://${ solutionLocation }.api.azureml.ms/discovery'
+var discoveryRef = uri('https://${ solutionLocation }.api.azureml.ms/discovery', '/')
 
 resource mlwsWorkspace 'Microsoft.MachineLearningServices/workspaces@2025-07-01-preview' = {
   name: mlwsName
@@ -67,7 +67,7 @@ resource mlwsWorkspace 'Microsoft.MachineLearningServices/workspaces@2025-07-01-
     v1LegacyMode: false
     containerRegistry: containerRegistry
     publicNetworkAccess: publicNetworkAccess
-    discoveryUrl: discoveryURL
+    discoveryUrl: discoveryRef
   }
 }
 

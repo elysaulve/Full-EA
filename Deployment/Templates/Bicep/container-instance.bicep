@@ -95,7 +95,7 @@ param storageAccountKey string
 @description('Azure File Share Name. The name of the Azure File share to be mounted as a volume.')
 param azureFileShareName string 
 
-resource containerInstance 'Microsoft.ContainerInstance/containerGroups@2024-10-01-preview' = {
+resource containerInstance 'Microsoft.ContainerInstance/containerGroups@2025-09-01' = {
   name: ciName
   location: solutionLocation
   tags: {

@@ -4,9 +4,6 @@
 @description('Solution Name')
 param solutionName string
 
-@description('Solution Location')
-param solutionLocation string = resourceGroup().location
-
 @description('DNS Zone Name.')
 param dnsZonesName string = '${ solutionName }.com'
 

@@ -87,16 +87,6 @@ param retentionPolicyStatus string = 'Disabled'
 @description('Retetion Policy Datys. The retention policy for a container registry. Days is the number of days to retain an untagged manifest after which it gets purged.')
 param retentionPolicyDays int = 30
 
-@description('Soft Delete Policy Retention Days. The soft delete policy for a container registry. Retention Days is the number of days after which a soft-deleted item is permanently deleted.')
-param softDeletePolicyRetentionDays int = 30
-
-@description('Soft Delete Policy Status. The soft delete policy for a container registry. Status is the value that indicates whether the policy is enabled or not.')
-@allowed([
-  'Enabled'
-  'Disabled'
-])
-param softDeletePolicyStatus string = 'Disabled'
-
 @description('Trust Policy Status. The soft delete policy for a container registry. Status is the value that indicates whether the policy is enabled or not.')
 @allowed([
   'Enabled'
@@ -121,7 +111,7 @@ param publicNetworkAccess string = 'Enabled'
 ])
 param zoneRedundancy string = 'Disabled'
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-05-01-preview' = {
+resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-11-01' = {
   name: crName
   location: solutionLocation
   tags: {
@@ -161,10 +151,6 @@ resource containerRegistry 'Microsoft.ContainerRegistry/registries@2025-05-01-pr
       retentionPolicy: {
         days: retentionPolicyDays
         status: retentionPolicyStatus
-      }
-      softDeletePolicy: {
-        retentionDays: softDeletePolicyRetentionDays
-        status: softDeletePolicyStatus
       }
       trustPolicy: {
         status: trustPolicyStatus

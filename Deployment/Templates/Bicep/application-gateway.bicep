@@ -2,7 +2,7 @@
 targetScope = 'resourceGroup'
 
 @description('The name of the Managed Cluster resource.')
-param solutionName string = ''
+param solutionName string = substring(guid(subscription().id, tenant().tenantId), 0, 15)
 
 @description('The location of the Managed Cluster resource.')
 param solutionLocation string = resourceGroup().location
@@ -12,9 +12,6 @@ param agName string = '${ solutionName }-ag'
 
 @description('Managed Identity ID. The resource ID of the user assigned identity to be used for the application gateway deployment.')
 param managedIdentityId string
-
-@description('Managed Identity Principal Id. The principal ID of the user assigned identity to be used for the application gateway deployment.')
-param managedIdentityPrincipalId string 
 
 @allowed([
   'Generation_1'
@@ -192,8 +189,6 @@ resource appGateway 'Microsoft.Network/applicationGateways@2024-07-01' = {
       {
         name: 'appGatewayBackendAddressPools'        
         properties: {
-          backendAddresses: [
-          ]
         }
       }
     ]
@@ -300,9 +295,6 @@ resource appGateway 'Microsoft.Network/applicationGateways@2024-07-01' = {
     firewallPolicy: {
       id: wafPolicy.id
     }
-    rewriteRuleSets: []
-    redirectConfigurations: []
-    privateLinkConfigurations: []
   }
 }
 

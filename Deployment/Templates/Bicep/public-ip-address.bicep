@@ -73,7 +73,7 @@ param publicIPAllocationMethod string = 'Static'
 var pointIndex = indexOf(domainNameLabel, '.')
 var domainName = substring(domainNameLabel, 0, pointIndex)
 
-resource publicIpAddress 'Microsoft.Network/publicIPAddresses@2024-05-01' = {
+resource publicIpAddress 'Microsoft.Network/publicIPAddresses@2025-01-01' = {
   location: solutionLocation
   name: pipName
   sku: {

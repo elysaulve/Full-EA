@@ -26,7 +26,7 @@ param encryptionKeyName string = 'encryptionKey'
 param encryptionKeyVersion string = ''
 
 @description('Encryption Key Vault URI. The Uri of KeyVault.')
-param encryptionKeyVaultUri string = ''
+param encryptionKeyVaultRef string = ''
 
 @description('Name')
 param dfName string = '${ solutionName }-df'
@@ -47,7 +47,7 @@ resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
       }
       keyName: encryptionKeyName
       keyVersion: encryptionKeyVersion
-      vaultBaseUrl: encryptionKeyVaultUri
+      vaultBaseUrl: encryptionKeyVaultRef
     }
     publicNetworkAccess: publicNetworkAccess
   }

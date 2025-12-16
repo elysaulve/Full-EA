@@ -14,37 +14,44 @@ param subscriptionId string = subscription().subscriptionId
 @minLength(3)
 @maxLength(15)
 @description('Solution Name')
-param solutionName string
+param solutionName string = substring(guid(subscriptionId, tenantId), 0, 15)
 
-var solutionLocation string = toLower(deployment().location)
+@description('Managed App expected managed resource group name (must match the application definition logic)')
+param managedResourceGroupName string
 
-module resourceGroupsModule './resource-group.bicep' = {
+resource managedResourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' existing = {
+  name: managedResourceGroupName
+}
+
+param Location string = deployment().location
+
+/*module resourceGroupsModule './resource-group.bicep' = {
   name: '${solutionName}-resourceGroupsDeployment'
   params: {
      solutionName: solutionName
-     solutionLocation: solutionLocation
+     solutionLocation: Location
   }
   scope: subscription(subscriptionId)
 }
 
 // Resource Group Names can't be retrieved from the resourceGroupsModule output directly, since you need values calculated from the beginning of the main.bicep file deployment
-var rgNetworkName = '${solutionName}_${solutionLocation}_network'
-var rgServicesName = '${solutionName}_${solutionLocation}_services' 
-var rgStorageName = '${solutionName}_${solutionLocation}_storage'
-var rgDataName = '${solutionName}_${solutionLocation}_data'
-var rgAnalyticsName = '${solutionName}_${solutionLocation}_analytics'
-var rgAIName = '${solutionName}_${solutionLocation}_ai'
+var rgNetworkName = '${solutionName}_${Location}_network'
+var rgServicesName = '${solutionName}_${Location}_services' 
+var rgStorageName = '${solutionName}_${Location}_storage'
+var rgDataName = '${solutionName}_${Location}_data'
+var rgAnalyticsName = '${solutionName}_${Location}_analytics'
+var rgAIName = '${solutionName}_${Location}_ai'*/
 
 // ========== Managed Identity ========== //
 module managedIdentityModule 'managed-identity.bicep' = {
   name: '${solutionName}-managedIdentityDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation   
+    solutionLocation: Location   
   }
-  scope: resourceGroup(rgServicesName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -56,12 +63,11 @@ module dnsZonesModule 'dns-zones.bicep' = {
   name: '${solutionName}-dnsZonesDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
     dnsZonesName: domain
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -70,13 +76,13 @@ module publicIpAddressAppGatewayModule 'public-ip-address.bicep' = {
   name: '${solutionName}-publicIpAddressAppGatewayDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     domainNameLabel: dnsZonesModule.outputs.dnsZonesOutput.name
     pipName: '${solutionName}-pip-ag'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -85,13 +91,13 @@ module publicIpAddressNatGatewayModule 'public-ip-address.bicep' = {
   name: '${solutionName}-publicIpAddressNatGatewayDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     domainNameLabel: dnsZonesModule.outputs.dnsZonesOutput.name
     pipName: '${solutionName}-pip-ng'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -100,13 +106,13 @@ module publicIpAddressVirtualNetworkGatewayDefaultModule 'public-ip-address.bice
   name: '${solutionName}-publicIpAddressVirtualNetworkGatewayDeployment1'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     domainNameLabel: dnsZonesModule.outputs.dnsZonesOutput.name
     pipName: '${solutionName}-pip-vng-default'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -115,13 +121,13 @@ module publicIpAddressVirtualNetworkGatewayActiveActiveModule 'public-ip-address
   name: '${solutionName}-publicIpAddressVirtualNetworkGatewayDeployment2'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     domainNameLabel: dnsZonesModule.outputs.dnsZonesOutput.name
     pipName: '${solutionName}-pip-vng-activeactive'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -130,12 +136,12 @@ module natGatewayModule 'nat-gateway.bicep' = {
   name: '${solutionName}-natGatewayDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     publicIpAddressId: publicIpAddressNatGatewayModule.outputs.publicIpAddressOutput.id
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -144,12 +150,12 @@ module virtualNetworkModule 'virtual-network.bicep' = {
   name: '${solutionName}-virtualNetworkDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     natGatewayId: natGatewayModule.outputs.natGatewayOutput.id
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -158,15 +164,14 @@ module appGatewayModule 'application-gateway.bicep' = {
   name: '${solutionName}-appGatewayDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
-    managedIdentityPrincipalId: managedIdentityModule.outputs.managedIdentityOutput.objectId
     publicIpAddress: publicIpAddressAppGatewayModule.outputs.publicIpAddressOutput.id
     appGatewaySubnetId: virtualNetworkModule.outputs.virtualNetworkOutput.appGatewaySubnet.id
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -175,7 +180,7 @@ module virtualNetworkGatewayModule 'virtual-network-gateway.bicep' = {
   name: '${solutionName}-virtualNetworkGatewayDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
     enableBgp: true
     enableBgpRouteTranslationForNat: true
@@ -183,9 +188,9 @@ module virtualNetworkGatewayModule 'virtual-network-gateway.bicep' = {
     virtualNetworkGatewayActiveActivePublicIpId: publicIpAddressVirtualNetworkGatewayActiveActiveModule.outputs.publicIpAddressOutput.id
     virtualNetworkGatewaySubnetId: virtualNetworkModule.outputs.virtualNetworkOutput.virtualNetworkGatewaySubnet.id
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -194,33 +199,46 @@ module keyvaultModule 'keyvault.bicep' = {
   name: '${solutionName}-keyvaultDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     tenantId: subscription().tenantId
     managedIdentityPrincipalId: managedIdentityModule.outputs.managedIdentityOutput.objectId
     enablePurgeProtection: true
     enableSoftDelete: true
   }
-  scope: resourceGroup(rgStorageName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [    
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
+
+@allowed([  
+  'Premium_LRS'
+  'Premium_ZRS'
+  'Standard_GRS'
+  'Standard_GZRS'
+  'Standard_LRS'
+  'Standard_RAGRS'
+  'Standard_RAGZRS'
+  'Standard_ZRS'
+])
+param storageSKU string = 'Standard_LRS'
 
 // ========== Storage Account Module ========== //
 module storageAccountModule 'storage-account.bicep' = {
   name: '${solutionName}-storageAccountDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     saName: '${solutionName}sa'
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
+    skuName: storageSKU
     keyName: keyvaultModule.outputs.keyvaultOutput.keys[0].name
     keyVersion: keyvaultModule.outputs.keyvaultOutput.keys[0].version
-    keyVaultUri: keyvaultModule.outputs.keyvaultOutput.uri
+    keyVaultRef: keyvaultModule.outputs.keyvaultOutput.uri
   }
-  scope: resourceGroup(rgStorageName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -230,16 +248,17 @@ module storageAccountModuleForMLWS 'storage-account.bicep' = {
   params: {
     saName: '${solutionName}samlws'
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
+    skuName: storageSKU
     keyName: keyvaultModule.outputs.keyvaultOutput.keys[0].name
     keyVersion: keyvaultModule.outputs.keyvaultOutput.keys[0].version
-    keyVaultUri: keyvaultModule.outputs.keyvaultOutput.uri
+    keyVaultRef: keyvaultModule.outputs.keyvaultOutput.uri
     isHnsEnabled: false
   }
-  scope: resourceGroup(rgStorageName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -248,7 +267,7 @@ module containerRegistryModule 'container-registry.bicep' = {
   name: '${solutionName}-containerRegistryDeployment'
   params: {    
     solutionName: solutionName
-    solutionLocation: solutionLocation  
+    solutionLocation: Location  
     armAudienceTokenPolicyStatus: 'Enabled'
     sku: 'Premium'
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id    
@@ -257,9 +276,9 @@ module containerRegistryModule 'container-registry.bicep' = {
     keyVaultKeyIdentifier: keyvaultModule.outputs.keyvaultOutput.keys[0].uri
     keyVaultStatus: 'Enabled'    
   }
-  scope: resourceGroup(rgStorageName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -268,21 +287,21 @@ module logsAnalyticsWorkspaceModule 'log-analytics-workspace.bicep' = {
   name: '${solutionName}-logAnalyticsWorkspaceDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
   }
-  scope: resourceGroup(rgAnalyticsName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 } 
 
 // ========== Container Instance Module ========== //
-module containerInstanceWorkspaceModule 'container-instance.bicep' = {
+/*module containerInstanceWorkspaceModule 'container-instance.bicep' = {
   name: '${solutionName}-containerInstanceDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation    
+    solutionLocation: Location    
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
     logAnalyticsWorkspaceResourceId: logsAnalyticsWorkspaceModule.outputs.logAnalyticsWorkspaceOutput.id  
     logAnalyticsWorkspaceId: logsAnalyticsWorkspaceModule.outputs.logAnalyticsWorkspaceOutput.workspaceId
@@ -299,19 +318,19 @@ module containerInstanceWorkspaceModule 'container-instance.bicep' = {
     containerRegistryModule
     resourceGroupsModule
   ]
-}
+}*/
 
 //========== Application Insights Module ========== //
 module applicationInsightsModule 'application-insights.bicep' = {
   name: '${solutionName}-applicationInsightsDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     workspaceResourceId: logsAnalyticsWorkspaceModule.outputs.logAnalyticsWorkspaceOutput.Id
   }
-  scope: resourceGroup(rgAnalyticsName) 
+  scope: resourceGroup(managedResourceGroup.name) 
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -323,12 +342,18 @@ param linuxAdminUserName string
 @description('SSH RSA Publick Key')
 param sshRSAPublicKey string
 
+@description('AKS VM Size. Size of the Virtual Machines to be used as nodes in the Kubernetes cluster.')
+param aksVMSize string = 'Standard_B2S'
+
+@description('AKS VM Count. Count of the Virtual Machines to be used as nodes in the Kubernetes cluster.')
+param aksVMCount int = 3
+
 // ========== Kubernetes Services Module ========== //
 module kubernetesServicesModule 'kubernetes-services.bicep' = {
   name: '${solutionName}-kubernetesServicesDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     dnsPrefix: solutionName    
     tenantId: tenantId        
     linuxAdminUsername: linuxAdminUserName
@@ -337,6 +362,8 @@ module kubernetesServicesModule 'kubernetes-services.bicep' = {
     managedIdentityPrincipalId: managedIdentityModule.outputs.managedIdentityOutput.objectId
     enableAzureRBAC: true
     servicesSubnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
+    agentVMSize: aksVMSize
+    agentCount: aksVMCount
     orchestratorVersion: '1.32.7'
     keyId: keyvaultModule.outputs.keyvaultOutput.keys[0].uri 
     keyVaultKmsEnabled: true
@@ -346,9 +373,9 @@ module kubernetesServicesModule 'kubernetes-services.bicep' = {
     dnsZoneResourceId: dnsZonesModule.outputs.dnsZonesOutput.id    
     appGatewayId: appGatewayModule.outputs.appGatewayOutput.id
   }
-  scope: resourceGroup(rgServicesName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule
+    managedResourceGroup
     containerRegistryModule            
   ]
 }
@@ -360,9 +387,9 @@ module agicReaderRoleAssignmentToNetworkRG 'agic-reader-role-assignment.bicep' =
     kubeletIdentityClientId: kubernetesServicesModule.outputs.kubernetesServicesOutput.kubeletIdentityClientId
     kubeletIdentityObjectId: kubernetesServicesModule.outputs.kubernetesServicesOutput.kubeletIdentityObjectId
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -376,9 +403,9 @@ module agicContributorRoleAssignment 'agic-contributor-role-assignment.bicep' = 
     appGatewaySubnetName: '${virtualNetworkModule.outputs.virtualNetworkOutput.name}/${virtualNetworkModule.outputs.virtualNetworkOutput.appGatewaySubnet.name}'
     servicesSubnetName: '${virtualNetworkModule.outputs.virtualNetworkOutput.name}/${virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.name}'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -391,14 +418,14 @@ module agicManagedIdentityOperatorRoleAssignment 'agic-managed-identity-operator
     kubeletIdentityClientId: kubernetesServicesModule.outputs.kubernetesServicesOutput.kubeletIdentityClientId
     kubeletIdentityObjectId: kubernetesServicesModule.outputs.kubernetesServicesOutput.kubeletIdentityObjectId
   }
-  scope: resourceGroup(rgServicesName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
 @description('SQL Administrator Login.')
-param sqlAdminLogin string 
+param sqlAdminUsername string 
 
 @description('SQL Administrator Password.')
 @secure()
@@ -409,15 +436,29 @@ module sqlServerModule 'sql-server.bicep' = {
   name: '${solutionName}-sqlServerDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
-    sqlAdminUsername: sqlAdminLogin
+    sqlAdminUsername: sqlAdminUsername
     sqlAdminPassword: sqlAdminPassword
-    dataEncryptionKeyURI: keyvaultModule.outputs.keyvaultOutput.keys[0].uri    
+    dataEncryptionKeyRef: keyvaultModule.outputs.keyvaultOutput.keys[0].uri    
   }
-  scope: resourceGroup(rgDataName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
+  ]
+}
+
+// ========== Cosmos DB ========== //
+module cosmosDbModule 'cosmos-db-sql.bicep' = {
+  name: '${solutionName}-cosmosDbDeployment'
+  params: {
+    solutionName: solutionName
+    solutionLocation: Location
+    managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn: [
+    managedResourceGroup    
   ]
 }
 
@@ -426,15 +467,15 @@ module dataFactoryModule 'data-factory.bicep' = {
   name: '${solutionName}-dataFactoryDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
     encryptionKeyName: keyvaultModule.outputs.keyvaultOutput.keys[0].name
     encryptionKeyVersion: keyvaultModule.outputs.keyvaultOutput.keys[0].version   
-    encryptionKeyVaultUri: keyvaultModule.outputs.keyvaultOutput.uri  
+    encryptionKeyVaultRef: keyvaultModule.outputs.keyvaultOutput.uri  
   }
-  scope: resourceGroup(rgDataName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -443,16 +484,16 @@ module machineLearningWorkspaceModule 'machine-learning-workspace.bicep' = {
   name: '${solutionName}-machineLearningWorkspaceDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation   
+    solutionLocation: Location   
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
     keyVault: keyvaultModule.outputs.keyvaultOutput.id
     storageAccount: storageAccountModuleForMLWS.outputs.storageAccountOutput.id
     containerRegistry: containerRegistryModule.outputs.containerRegistryOutput.id
     applicationInsights: applicationInsightsModule.outputs.applicationInsightsOutput.id
   }
-  scope: resourceGroup(rgAIName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -466,9 +507,9 @@ module dbwsKeyVaultCryptoServiceEncryptionUserRoleAssignment 'keyvault-crypto-se
     managedIdentityPrincipalId: azureDatabricksEnterpriseApplicationObjectId
     keyvaultName: keyvaultModule.outputs.keyvaultOutput.name
   }
-  scope: resourceGroup(rgStorageName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule    
+    managedResourceGroup    
   ]
 }
 
@@ -477,7 +518,7 @@ module databricksWorkspaceModule 'databricks-workspace.bicep' = {
   name: '${solutionName}-databricksWorkspaceDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation  
+    solutionLocation: Location  
     dbwsName: '${solutionName}-dbws' 
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
     managedIdentityPrincipalId: managedIdentityModule.outputs.managedIdentityOutput.objectId
@@ -487,13 +528,13 @@ module databricksWorkspaceModule 'databricks-workspace.bicep' = {
     customPublicSubnetName: virtualNetworkModule.outputs.virtualNetworkOutput.databricksSubnetPublic.name
     storageAccountName: '${solutionName}dbwssa'
     storageAccountSKU: storageAccountModule.outputs.storageAccountOutput.sku
-    keyVaultUri: keyvaultModule.outputs.keyvaultOutput.uri
+    keyVaultRef: keyvaultModule.outputs.keyvaultOutput.uri
     encryptionKeyName: keyvaultModule.outputs.keyvaultOutput.keys[0].name
     encryptionKeyVersion: keyvaultModule.outputs.keyvaultOutput.keys[0].version
   }
-  scope: resourceGroup(rgDataName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn: [
-    resourceGroupsModule  
+    managedResourceGroup  
     virtualNetworkGatewayModule 
   ]
 }
@@ -503,13 +544,13 @@ module synapseAnalyticsWorkspaceModule 'synapse-analytics-workspace.bicep' = {
   name: '${solutionName}-synapseAnalyticsWorkspaceDeployment'
   params: {
     solutionName: solutionName
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     dlsResourceId: storageAccountModuleForMLWS.outputs.storageAccountOutput.id
-    dlsAccountUrl: storageAccountModuleForMLWS.outputs.storageAccountOutput.dfs
+    dlsAccountRef: storageAccountModuleForMLWS.outputs.storageAccountOutput.dfs
     dlsFileSystem: storageAccountModuleForMLWS.outputs.storageAccountOutput.dataContainer
     managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
   }
-  scope: resourceGroup(rgAnalyticsName)
+  scope: resourceGroup(managedResourceGroup.name)
 }
 
 // ========== Private End-Points ========== //
@@ -517,7 +558,7 @@ module synapseAnalyticsWorkspaceModule 'synapse-analytics-workspace.bicep' = {
 module privateEndpointAKStoASAModule 'private-endpoint.bicep' = {
   name: '${solutionName}-privateEndpointFromAKSToASADeployment'
   params: {
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     serviceName: kubernetesServicesModule.outputs.kubernetesServicesOutput.name
     subnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
     resourceNameForPE: storageAccountModule.outputs.storageAccountOutput.name
@@ -526,9 +567,9 @@ module privateEndpointAKStoASAModule 'private-endpoint.bicep' = {
       'blob'
     ]
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -540,9 +581,9 @@ module privateDnsZoneAKStoASAModule 'private-dns-zone.bicep' = {
     privateEndPointName: privateEndpointAKStoASAModule.outputs.resourcePrivateEndPointOutput.name
     privateDNSZoneName: '${solutionName}.privatelink.blob.${environment().suffixes.storage}'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -550,7 +591,7 @@ module privateDnsZoneAKStoASAModule 'private-dns-zone.bicep' = {
 module privateEndpointAKStoACRModule 'private-endpoint.bicep' = {
   name: '${solutionName}-privateEndpointFromAKSToACRDeployment'
   params: {
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     serviceName: kubernetesServicesModule.outputs.kubernetesServicesOutput.name
     subnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
     resourceNameForPE: containerRegistryModule.outputs.containerRegistryOutput.name
@@ -559,9 +600,9 @@ module privateEndpointAKStoACRModule 'private-endpoint.bicep' = {
       'registry'
     ]
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -573,9 +614,9 @@ module privateDnsZoneAKStoACRModule 'private-dns-zone.bicep' = {
     privateEndPointName: privateEndpointAKStoACRModule.outputs.resourcePrivateEndPointOutput.name
     privateDNSZoneName: '${solutionName}.privatelink${environment().suffixes.acrLoginServer}'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -583,7 +624,7 @@ module privateDnsZoneAKStoACRModule 'private-dns-zone.bicep' = {
 module privateEndpointAKStoSQLModule 'private-endpoint.bicep' = {
   name: '${solutionName}-privateEndpointFromAKSToSQLDeployment'
   params: {
-    solutionLocation: solutionLocation
+    solutionLocation: Location
     serviceName: kubernetesServicesModule.outputs.kubernetesServicesOutput.name
     subnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
     resourceNameForPE: sqlServerModule.outputs.sqlServerOutput.name
@@ -592,9 +633,9 @@ module privateEndpointAKStoSQLModule 'private-endpoint.bicep' = {
       'sqlServer'
     ]
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -606,9 +647,9 @@ module privateDnsZoneAKStoSQLModule 'private-dns-zone.bicep' = {
     privateEndPointName: privateEndpointAKStoSQLModule.outputs.resourcePrivateEndPointOutput.name
     privateDNSZoneName: '${solutionName}.privatelink${environment().suffixes.sqlServerHostname}'
   }
-  scope: resourceGroup(rgNetworkName)
+  scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
-    resourceGroupsModule
+    managedResourceGroup
   ]
 }
 
@@ -626,106 +667,3 @@ module scriptsDeploymentModule 'scripts-deployment.bicep' = {
   }
   scope: resourceGroup(rgServicesName)
 }*/
-
-// ========== Maps Account ========== //
-/*module mapsAccountModule 'maps-account.bicep' = {
-  name: 'mapsAccountDeployment'
-  params: {
-    solutionName: solutionName
-    solutionLocation: solutionLocation        
-    //Linked Resources Properties
-    linkedResourcesId: storageAccountModule.outputs.storageAccountOutput.id
-    linkedResourcesUniqueName: storageAccountModule.outputs.storageAccountOutput.name   
-  }
-  scope: resourceGroup(rgServiceName)
-  dependsOn:[       
-    storageAccountModule    
-  ]
-}*/
-
-// ========== CDN Profile ========== //
-/*module cdnProfileModule 'cdn-profile.bicep' = {
-  name: 'cdnProfileDeployment'
-  params: {
-    solutionName: solutionName
-    solutionLocation: solutionLocation     
-    userAssignedIdentity: managedIdentityModule.outputs.managedIdentityOutput.id        
-  }
-  scope: resourceGroup(rgServiceName)
-  dependsOn:[       
-    managedIdentityModule
-    dnsZonesModule      
-  ]
-}*/
-
-/*var secKeyvaultName = '${ solutionName }sec'
-
-// ========== Postgre SQL Key Vault Module ========== //
-module secondaryKeyvaultModule 'keyvault.bicep' = {
-  name: 'secondaryKeyvaultDeployment'
-  params: {
-    solutionName: secKeyvaultName
-    solutionLocation: secondaryLocation
-    objectId: managedIdentityModule.outputs.managedIdentityOutput.objectId
-    tenantId: subscription().tenantId
-    managedIdentityObjectId: managedIdentityModule.outputs.managedIdentityOutput.objectId
-    //Next properties should be true to enable encryption in other resources
-    enablePurgeProtection: true
-    enableSoftDelete: true
-    encryptionKeyName: 'newEncryptionKey'
-  }
-  scope: resourceGroup(rgStorageName)
-}*/
-
-// ========== Postgre SQL ========== //
-/*module postgreSQLModule 'postgre-sql.bicep' = {
-  name: 'postgreSQLDeployment'
-  params: {
-    solutionName: solutionName
-    solutionLocation: secondaryLocation     
-    userAssignedIdentity: managedIdentityModule.outputs.managedIdentityOutput.id    
-    administratorLogin: SQLAdminLogin
-    administratorLoginPassword: SQLAdminPassword
-    dataEncryptionPrimaryKeyURI: secondaryKeyvaultModule.outputs.keyvaultOutput.keys[0].uri
-    dataEncryptionGeoBackupKeyURI: secondaryKeyvaultModule.outputs.keyvaultOutput.keys[0].uri
-  }
-  scope: resourceGroup(rgDataName)
-  dependsOn:[       
-    resourceGroupsModule
-    managedIdentityModule    
-    secondaryKeyvaultModule          
-  ]
-}*/
-/*
-module deployCode 'code-deployment.bicep' = {
-  name : 'codeDeployment'
-  params:{
-    storageAccountName: storageAccountModule.outputs.storageAccountOutput.name
-    workspaceName: synapseAnalyticsWorkspaceModule.outputs.SypnaseAnalyticsWorkspaceOutput.name
-    solutionLocation: solutionLocation
-    containerName: storageAccountModule.outputs.storageAccountOutput.dataContainer
-    identity: managedIdentityModule.outputs.managedIdentityOutput.id
-    amlworkspace_name: machineLearningWorkspaceModule.outputs.machineLearningWorkspaceOutput.name
-    keyVaultName: keyvaultModule.outputs.keyvaultOutput.name
-    //serviceBusConnectionString: serviceBusNamespaceModule.outputs.serviceBusOutput.connectionString
-    identityObjectId: managedIdentityModule.outputs.managedIdentityOutput.objectId
-    storageAccountKey: storageAccountModule.outputs.storageAccountOutput.key
-    baseUrl: baseUrl
-  }
-  dependsOn:[
-    storageAccountModule 
-    synapseAnalyticsWorkspaceModule
-  ]
-  scope: subscription().id
-}
-
-
-// ========== Service Bus Namespace ========== //
-//module serviceBusNamespaceModule 'service-bus-namespace.bicep' = {
-//  name: 'serviceBusNamespaceDeployment'
-//  params: {
-//    solutionName: solutionPrefix
-//    solutionLocation: solutionLocation
-//  }
-//}
-*/

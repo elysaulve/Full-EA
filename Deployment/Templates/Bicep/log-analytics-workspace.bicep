@@ -36,7 +36,7 @@ param skuName string = 'PerGB2018'
 @description('Managed Identity Id. Resource identifier of the UserAssigned identity to be used for the Log Analytics Workspace.')
 param managedIdentityId string
 
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2025-07-01' = {
   name: lawsName
   location: solutionLocation
   tags: {
@@ -60,11 +60,10 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09
   }
 }
 
-var key = logAnalyticsWorkspace.listKeys().primarySharedKey
+//var key = logAnalyticsWorkspace.listKeys().primarySharedKey
 
 output logAnalyticsWorkspaceOutput object = {
   id: logAnalyticsWorkspace.id
   name: lawsName
   workspaceId: logAnalyticsWorkspace.properties.customerId
-  workspaceKey: key
 }

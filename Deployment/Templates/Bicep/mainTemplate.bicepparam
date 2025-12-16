@@ -1,16 +1,20 @@
-using 'main.bicep'
+using 'mainTemplate.bicep'
 
 param subscriptionId = '66c0cf99-efaa-4c9f-b286-722591d3d80b'
-param solutionName = 'mytest30'
-param solutionLocation = 'southcentralus'
+param solutionName = 'mytest73'
+
+param managedResourceGroupName = '${solutionName}-mrg'
 
 //DNS Zone
-param domain = 'mytest30.com'
+param domain = 'mytest73.com'
 
 //Kubernetes Services
 param linuxAdminUserName = 'Elsavies'
 param sshRSAPublicKey = 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC3pHMrfxN+LGTP3aM6hS3wBt0PoKJKQACJQosznluIFEzuOHn54U+nBnnwy/7yY02RgdZC4Ai7i1vFf6sq+VMF4d7tfyJyRgWmXerXzRGTXSgbyyi5mSnC9kzqblm7tIBzE5a/uPOYhad7nd0KpL18POuVHDMM1uQ7qbocbHBGkwDWFu9fNRhlhSdhXCvLHIUfaI5arvhGudwUUrdOaLMbJS1I4g0d204gppXTEC7luqdDtQvxxwv5cWTwpwTTo5DWZhz72ofvhyhrC47oA3sm3S4E4qj9NE0T+p6mZ0MYY0sJFRCPiWS2F2FVmZxHBx7VnhmCX2irP76oUSw6rYCacA6rcLvuacG/VfNaQcRSP+UxRSaj2si0HJsLrkZoIckUX0aDbrrvFRz0eZa9JhBXK9zbgxtfY5vQ1tOpGKLozuyHgyMEW6LqlXss/NneyypPMS37mLBEcR5LPzG81pn3D7NaTn+iJkrxVh2OUuft4QVes2K+PEGGNvr8ZStkwD0= azuread\\elyvicente@Elsavies'
 
+//Storage Account
+param storageSKU = 'Standard_LRS'
+
 //SQL
-param sqlAdminLogin = 'elsavies'
+param sqlAdminUsername = 'elsavies'
 param sqlAdminPassword = 'SQL.2025!'
