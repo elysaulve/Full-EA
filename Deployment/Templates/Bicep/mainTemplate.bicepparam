@@ -1,12 +1,12 @@
 using 'mainTemplate.bicep'
 
 param subscriptionId = '66c0cf99-efaa-4c9f-b286-722591d3d80b'
-param solutionName = 'mytest73'
+param solutionName = 'mytest79'
 
 param managedResourceGroupName = '${solutionName}-mrg'
 
 //DNS Zone
-param domain = 'mytest73.com'
+param domain = 'mytest79.com'
 
 //Kubernetes Services
 param linuxAdminUserName = 'Elsavies'

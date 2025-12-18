@@ -462,6 +462,20 @@ module cosmosDbModule 'cosmos-db-sql.bicep' = {
   ]
 }
 
+// ========== Redis Cache ========== //
+module redisCacheModule 'redis-cache.bicep' = {
+  name: '${solutionName}-redisCacheDeployment'
+  params: {
+    solutionName: solutionName
+    solutionLocation: Location
+    managedIdentityId: managedIdentityModule.outputs.managedIdentityOutput.id
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn: [
+    managedResourceGroup    
+  ]
+}
+
 // ========== Data Factory ========== //
 module dataFactoryModule 'data-factory.bicep' = {
   name: '${solutionName}-dataFactoryDeployment'
@@ -646,6 +660,72 @@ module privateDnsZoneAKStoSQLModule 'private-dns-zone.bicep' = {
     solutionName: solutionName
     privateEndPointName: privateEndpointAKStoSQLModule.outputs.resourcePrivateEndPointOutput.name
     privateDNSZoneName: '${solutionName}.privatelink${environment().suffixes.sqlServerHostname}'
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn:[
+    managedResourceGroup
+  ]
+}
+
+// ========== Private End-Point AKS-CDB ========== //
+module privateEndpointAKStoCDBModule 'private-endpoint.bicep' = {
+  name: '${solutionName}-privateEndpointFromAKSToCDBDeployment'
+  params: {
+    solutionLocation: Location
+    serviceName: kubernetesServicesModule.outputs.kubernetesServicesOutput.name
+    subnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
+    resourceNameForPE: cosmosDbModule.outputs.cosmosDbOutput.name
+    resourceIdForPE: cosmosDbModule.outputs.cosmosDbOutput.id
+    resourceGroupIdsForPE: [
+      'MongoDB'
+    ]
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn:[
+    managedResourceGroup
+  ]
+}
+
+// ========== Private DNS Zone AKS-CDB ========== //
+module privateDnsZoneAKStoCDBModule 'private-dns-zone.bicep' = {
+  name: '${solutionName}-privateDnsZoneFromAKSToCDBDeployment'
+  params: {
+    solutionName: solutionName
+    privateEndPointName: privateEndpointAKStoCDBModule.outputs.resourcePrivateEndPointOutput.name
+    privateDNSZoneName: '${solutionName}.privatelink.mongo.cosmos.azure.com'
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn:[
+    managedResourceGroup
+  ]
+}
+
+// ========== Private End-Point AKS-RC ========== //
+module privateEndpointAKStoRCModule 'private-endpoint.bicep' = {
+  name: '${solutionName}-privateEndpointFromAKSToRCDeployment'
+  params: {
+    solutionLocation: Location
+    serviceName: kubernetesServicesModule.outputs.kubernetesServicesOutput.name
+    subnetId: virtualNetworkModule.outputs.virtualNetworkOutput.servicesSubnet.id
+    resourceNameForPE: redisCacheModule.outputs.redisCacheOutput.name
+    resourceIdForPE: redisCacheModule.outputs.redisCacheOutput.id
+    resourceGroupIdsForPE: [
+      'redisCache'
+    ]
+  }
+  scope: resourceGroup(managedResourceGroup.name)
+  dependsOn:[
+    managedResourceGroup
+  ]
+}
+
+// ========== Private DNS Zone AKS-RC ========== //
+module privateDnsZoneAKStoRCModule 'private-dns-zone.bicep' = {
+  name: '${solutionName}-privateDnsZoneFromAKSToRCDeployment'
+  params: {
+    solutionName: solutionName
+    privateEndPointName: privateEndpointAKStoRCModule.outputs.resourcePrivateEndPointOutput.name
+    privateDNSZoneName: '${solutionName}.privatelink.redis.cache.windows.net'
   }
   scope: resourceGroup(managedResourceGroup.name)
   dependsOn:[
